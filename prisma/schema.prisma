@@ -1,7 +1,6 @@
 // ============================================================
-//  Prisma Schema — The Teneen (Extended from Clac-Calories)
-//  Adds: User, MealLog for mobile app layer
-//  Preserves: Restaurant, CachedMenuItem, CachedAddOn, Company
+//  Prisma Schema -- The Teneen (Egyptian MyFitnessPal)
+//  Full schema with all feature models
 // ============================================================
 
 generator client {
@@ -72,25 +71,48 @@ model Company {
   @@index([apiKey])
 }
 
-// ── New Models for The Teneen Mobile App ────────────────────
+// -- User (Extended with full profile) ----------------------
 
 model User {
-  id                String    @id @default(uuid())
-  name              String
-  email             String    @unique
-  passwordHash      String
-  dailyCalorieGoal  Int       @default(2000)
-  proteinGoal       Int       @default(150)
-  carbsGoal         Int       @default(200)
-  fatsGoal          Int       @default(65)
-  isPremium         Boolean   @default(false)
-  isActive          Boolean   @default(true)
-  mealLogs          MealLog[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String      @id @default(uuid())
+  name             String
+  email            String      @unique
+  passwordHash     String
+
+  // Physical profile
+  age              Int?
+  weightKg         Float?
+  heightCm         Float?
+  gender           String?     // male | female
+  activityLevel    String      @default("moderate") // sedentary | lightly_active | moderate | very_active
+  goal             String      @default("maintain") // lose | maintain | gain
+
+  // Daily goals
+  dailyCalorieGoal Int         @default(2000)
+  proteinGoal      Int         @default(150)
+  carbsGoal        Int         @default(200)
+  fatsGoal         Int         @default(65)
+  dailyWaterGoalMl Int         @default(2500)
+
+  // App settings
+  language         String      @default("en") // en | ar
+  isPremium        Boolean     @default(false)
+  isActive         Boolean     @default(true)
+
+  // Relations
+  mealLogs         MealLog[]
+  foodLogs         FoodLog[]
+  waterLogs        WaterLog[]
+  weightLogs       WeightLog[]
+  mealPlans        MealPlan[]
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([email])
 }
+
+// -- Meal Log (AI-analyzed restaurant meals) -----------------
 
 model MealLog {
   id                   String   @id @default(uuid())
@@ -106,14 +128,107 @@ model MealLog {
   carbs                Float
   fats                 Float
 
-  ingredientsBreakdown Json     // Array of { ingredient: string, estimatedWeightGrams: number }
-  rawAiResponse        Json?    // Full Gemini response stored for auditing
+  ingredientsBreakdown Json
+  rawAiResponse        Json?
 
-  source               String   @default("text") // "text" | "image"
+  source               String   @default("text")  // text | image
+  mealType             String   @default("other") // breakfast | lunch | dinner | snack | other
+  loggedAt             DateTime @default(now())
   createdAt            DateTime @default(now())
 
-  @@index([userId, createdAt])
+  @@index([userId, loggedAt])
   @@index([userId])
+}
+
+// -- Food Item (Egyptian Food Database bilingual) ------------
+
+model FoodItem {
+  id          String     @id @default(uuid())
+  nameEn      String
+  nameAr      String
+  calories    Float
+  protein     Float
+  carbs       Float
+  fats        Float
+  fiber       Float      @default(0)
+  servingSize Float      @default(100)
+  servingUnit String     @default("g")
+  category    String
+  isVerified  Boolean    @default(false)
+
+  foodLogs    FoodLog[]
+  mealPlans   MealPlan[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([nameEn])
+  @@index([nameAr])
+  @@index([category])
+}
+
+// -- Food Log (Daily logging from food database) -------------
+
+model FoodLog {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItemId String
+  foodItem   FoodItem  @relation(fields: [foodItemId], references: [id])
+
+  servings   Float     @default(1)
+  mealType   String    @default("other")
+  loggedAt   DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, loggedAt])
+  @@index([userId])
+}
+
+// -- Water Log -----------------------------------------------
+
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountMl  Int
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+// -- Weight Log ----------------------------------------------
+
+model WeightLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg  Float
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+// -- Meal Plan -----------------------------------------------
+
+model MealPlan {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItemId String
+  foodItem   FoodItem  @relation(fields: [foodItemId], references: [id])
+
+  weekStart  DateTime
+  dayOfWeek  Int
+  mealType   String
+  servings   Float     @default(1)
+  isEaten    Boolean   @default(false)
+
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, weekStart])
 }
 
 model SponsorProduct {
