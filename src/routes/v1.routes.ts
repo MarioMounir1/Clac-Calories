@@ -14,6 +14,7 @@ import { searchFoods, getFoodById, getFoodCategories } from "../controllers/food
 import { logFood, getTodayFoodLogs, deleteFoodLog } from "../controllers/food-log.controller";
 import { logWater, getTodayWater, deleteWaterLog } from "../controllers/water.controller";
 import { logWeight, getWeightHistory, deleteWeightLog } from "../controllers/weight.controller";
+import { getTodayMealPlan, getWeekMealPlan, generateMealPlan, markAsEaten } from "../controllers/meal-plan.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { analyzeMealLimiter, authLimiter } from "../middleware/rateLimit.middleware";
 
@@ -168,6 +169,38 @@ router.get("/weight/history", requireAuth, getWeightHistory);
  * @access  Private (JWT required, ownership enforced)
  */
 router.delete("/weight/:id", requireAuth, deleteWeightLog);
+
+// ── Meal Plan Routes ─────────────────────────────────────────
+
+/**
+ * @route   GET /api/v1/meal-plans/today
+ * @desc    Get today's meal plan entries with totals
+ * @access  Private (JWT required)
+ */
+router.get("/meal-plans/today", requireAuth, getTodayMealPlan);
+
+/**
+ * @route   GET /api/v1/meal-plans/week
+ * @desc    Get full week meal plan grouped by day
+ * @access  Private (JWT required)
+ */
+router.get("/meal-plans/week", requireAuth, getWeekMealPlan);
+
+/**
+ * @route   POST /api/v1/meal-plans/generate
+ * @desc    Auto-generate a weekly meal plan based on user calorie goal
+ *          (replaces existing plan for the current week)
+ * @access  Private (JWT required)
+ */
+router.post("/meal-plans/generate", requireAuth, generateMealPlan);
+
+/**
+ * @route   PUT /api/v1/meal-plans/:id/eaten
+ * @desc    Toggle a meal plan entry as eaten / not eaten
+ * @access  Private (JWT required, ownership enforced)
+ * @body    { isEaten?: boolean } (defaults to true)
+ */
+router.put("/meal-plans/:id/eaten", requireAuth, markAsEaten);
 
 // ── Meal Analysis Routes ───────────────────────────────────
 
