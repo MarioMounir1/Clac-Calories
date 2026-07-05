@@ -84,6 +84,26 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     Emitter<ProfileState> emit,
   ) async {
     await repository.setOnboardingCompleted(true);
-    emit(const OnboardingStatusChecked(true));
+    final currentState = state;
+    if (currentState is ProfileLoaded) {
+      emit(ProfileLoaded(
+        user: currentState.user,
+        isOnboardingCompleted: true,
+      ));
+    } else if (currentState is ProfileUpdateSuccess) {
+      emit(ProfileLoaded(
+        user: currentState.user,
+        isOnboardingCompleted: true,
+      ));
+    } else {
+      final result = await repository.fetchUserProfile();
+      result.fold(
+        (failure) => emit(ProfileFailure(failure.message)),
+        (user) => emit(ProfileLoaded(
+          user: user,
+          isOnboardingCompleted: true,
+        )),
+      );
+    }
   }
 }
