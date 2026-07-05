@@ -28,6 +28,13 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
 
+import 'features/profile/domain/repositories/profile_repository.dart';
+import 'features/profile/data/repositories/profile_repository_impl.dart';
+import 'features/profile/presentation/bloc/profile_bloc.dart';
+import 'features/profile/presentation/bloc/profile_event.dart';
+import 'features/profile/presentation/bloc/profile_state.dart';
+import 'features/profile/presentation/onboarding_screen.dart';
+
 // ── Language Cubit ────────────────────────────────────────────
 // Simple cubit to hold and switch the app locale.
 // Screens call context.read<LanguageCubit>().setLanguage('ar') to switch.
@@ -94,11 +101,13 @@ class TeneenApp extends StatelessWidget {
     final apiClient       = ApiClient(secureStorage: const FlutterSecureStorage());
     final MealRepository  mealRepository = MealRepositoryImpl(apiClient);
     final AuthRepository  authRepository = AuthRepositoryImpl(apiClient);
+    final ProfileRepository profileRepository = ProfileRepositoryImpl(apiClient);
 
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<MealRepository>.value(value: mealRepository),
         RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<ProfileRepository>.value(value: profileRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -111,6 +120,12 @@ class TeneenApp extends StatelessWidget {
             create: (ctx) => AuthBloc(
               authRepository: ctx.read<AuthRepository>(),
             )..add(AppStarted()),
+          ),
+          // Profile
+          BlocProvider<ProfileBloc>(
+            create: (ctx) => ProfileBloc(
+              repository: ctx.read<ProfileRepository>(),
+            ),
           ),
           // Meal tracker
           BlocProvider<CalorieTrackerBloc>(
@@ -176,11 +191,62 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        if (state is Authenticated) {
-          return const AnalyzeMealScreen();
+      builder: (context, authState) {
+        if (authState is Authenticated) {
+          return BlocBuilder<ProfileBloc, ProfileState>(
+            builder: (context, profileState) {
+              if (profileState is ProfileInitial) {
+                context.read<ProfileBloc>().add(LoadProfile());
+                return const Scaffold(
+                  backgroundColor: AppColors.background,
+                  body: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                );
+              }
+              if (profileState is ProfileLoading) {
+                return const Scaffold(
+                  backgroundColor: AppColors.background,
+                  body: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                );
+              }
+              if (profileState is ProfileLoaded) {
+                if (profileState.isOnboardingCompleted) {
+                  return const AnalyzeMealScreen();
+                } else {
+                  return const OnboardingScreen();
+                }
+              }
+              if (profileState is ProfileFailure) {
+                // If it fails, let them complete onboarding or try loading again
+                return Scaffold(
+                  backgroundColor: AppColors.background,
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(profileState.message, style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => context.read<ProfileBloc>().add(LoadProfile()),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const OnboardingScreen();
+            },
+          );
         }
-        if (state is Unauthenticated || state is AuthFailure) {
+        if (authState is Unauthenticated || authState is AuthFailure) {
           return const LoginScreen();
         }
         // Splash / loading state
