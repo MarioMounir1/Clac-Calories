@@ -70,19 +70,19 @@ app.use((_req: Request, res: Response) => {
 
 app.use(errorHandler);
 
-// ── Server Start ───────────────────────────────────────────
-
-app.listen(PORT, () => {
-  console.log(`🚀  Calc-Calories API running on http://localhost:${PORT}`);
-  console.log(`📱  Mobile API (v1):`);
-  console.log(`   Auth:     POST /api/v1/auth/register`);
-  console.log(`   Auth:     POST /api/v1/auth/login`);
-  console.log(`   Profile:  GET  /api/v1/users/me`);
-  console.log(`   Analyze:  POST /api/v1/meals/analyze`);
-  console.log(`   History:  GET  /api/v1/meals/history`);
-  console.log(`🔧  Legacy API:`);
-  console.log(`   Nutrition: POST /api/nutrition/calculate`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`🚀  Calc-Calories API running on http://localhost:${PORT}`);
+    console.log(`📱  Mobile API (v1):`);
+    console.log(`   Auth:     POST /api/v1/auth/register`);
+    console.log(`   Auth:     POST /api/v1/auth/login`);
+    console.log(`   Profile:  GET  /api/v1/users/me`);
+    console.log(`   Analyze:  POST /api/v1/meals/analyze`);
+    console.log(`   History:  GET  /api/v1/meals/history`);
+    console.log(`🔧  Legacy API:`);
+    console.log(`   Nutrition: POST /api/nutrition/calculate`);
+  });
+}
 
 // ── Bootstrap ──────────────────────────────────────────────
 

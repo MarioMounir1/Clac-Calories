@@ -1,7 +1,7 @@
 // ============================================================
 //  src/services/ai.service.ts
 //  Calc-Calories — Multimodal AI Service (text + image → macros)
-//  Uses Gemini 1.5 Pro with strict JSON Schema output mode
+//  Automatically switches between Google Gemini and Local Ollama (Llama 3)
 // ============================================================
 
 import {
@@ -10,12 +10,9 @@ import {
   Part,
   InlineDataPart,
 } from "@google/generative-ai";
+import { OLLAMA_CONFIG } from "../config";
 
 const apiKey = process.env.GEMINI_API_KEY ?? "";
-if (!apiKey) {
-  console.warn("⚠️  [AI Service] GEMINI_API_KEY is not set. AI analysis will fail.");
-}
-
 const genAI = new GoogleGenerativeAI(apiKey);
 
 // ── Response Types ─────────────────────────────────────────
@@ -91,22 +88,94 @@ const SYSTEM_INSTRUCTION = `You are an expert Egyptian sports nutritionist and f
 Your task: Analyze the provided meal (either a text description or a screenshot/photo of food) and return precise nutritional macros.
 
 CRITICAL RULES:
-1. Be realistic about Egyptian restaurant portion sizes. Egyptian restaurants like Buffalo Burger, Bazooka, KFC Egypt, Pizza Hut Egypt, Koshary El Tahrir, etc., serve standard portions.
-2. For burgers/sandwiches: Account for the full meal (bun + patty + toppings + any included sides).
+1. Be realistic about Egyptian restaurant portion sizes. Egyptian restaurants serve standard portions.
+2. For burgers/sandwiches: Account for the full meal (bun + patty + toppings + included sides).
 3. For combos/meals: Deconstruct ALL components and SUM their macros.
-4. For images: Carefully examine every visible food item. Identify the restaurant from logos, packaging, or menu style if possible.
-5. Return calories as kcal (a single realistic integer, not a range).
-6. All macro values (protein, carbs, fats) must be in grams as realistic integers.
-7. The ingredientsBreakdown must list every major component with a realistic estimated weight.
-8. If the restaurant cannot be identified from an image, use "Unknown Restaurant".
-9. Egyptian-specific dishes: Koshary (500-700 kcal), Falafel sandwich (350-450 kcal), Shawarma (450-600 kcal), Ful medames (300-400 kcal).
+4. Return calories as kcal (a single realistic integer).
+5. All macro values (protein, carbs, fats) must be in grams as realistic integers.
+6. The ingredientsBreakdown must list every major component with a realistic estimated weight.
+7. Egyptian-specific dishes: Koshary (500-700 kcal), Falafel sandwich (350-450 kcal), Shawarma (450-600 kcal), Ful medames (300-400 kcal).
 
-Always return a valid JSON object matching the exact schema. Never include markdown, explanations, or extra text.`;
+Always return a valid JSON object matching this structure:
+{
+  "mealName": "string",
+  "restaurantName": "string",
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fats": number,
+  "ingredientsBreakdown": [{"ingredient": "string", "estimatedWeightGrams": number}]
+}`;
 
 // ── Core AI Analysis Function ──────────────────────────────
 
 export async function analyzeMeal(input: AnalyzeInput): Promise<MealAnalysisResult> {
+  const provider = process.env.AI_PROVIDER ?? "google";
+
+  if (provider === "ollama") {
+    if (input.type === "image") {
+      throw new Error("Local Ollama (Llama 3) does not support multimodal image analysis. Please use text description or set AI_PROVIDER=google.");
+    }
+    return analyzeWithOllama(input);
+  }
+
+  return analyzeWithGemini(input);
+}
+
+// ── Local Ollama (Llama 3) Implementation ──────────────────
+
+async function analyzeWithOllama(input: AnalyzeTextInput): Promise<MealAnalysisResult> {
+  console.log(`🔮 Calling local Ollama (${OLLAMA_CONFIG.model}): ${input.restaurantName} — ${input.mealDescription}`);
+  
+  const userPrompt = `Restaurant: ${input.restaurantName}
+Meal Description: ${input.mealDescription}
+
+Analyze the nutritional content of this specific meal from this Egyptian restaurant and return the macros.`;
+
+  const response = await fetch(`${OLLAMA_CONFIG.baseUrl}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_CONFIG.model,
+      messages: [
+        { role: "system", content: SYSTEM_INSTRUCTION },
+        { role: "user", content: userPrompt },
+      ],
+      stream: false,
+      options: {
+        temperature: OLLAMA_CONFIG.temperature,
+      },
+      format: "json",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const responseData = await response.json() as any;
+  const responseText = responseData.message?.content?.trim();
+
+  if (!responseText) {
+    throw new Error("Empty response from Ollama API");
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(responseText);
+  } catch (err) {
+    throw new Error(`Ollama returned invalid JSON response: ${responseText.slice(0, 200)}`);
+  }
+
+  return parseAndValidateResponse(parsed);
+}
+
+// ── Google Gemini Implementation ───────────────────────────
+
+async function analyzeWithGemini(input: AnalyzeInput): Promise<MealAnalysisResult> {
   const modelName = process.env.GEMINI_MODEL ?? "gemini-1.5-pro";
+  console.log(`🔮 Calling Gemini API (${modelName}): ${input.type === "text" ? input.mealDescription : "Image buffer"}`);
 
   const model = genAI.getGenerativeModel({
     model: modelName,
@@ -116,7 +185,7 @@ export async function analyzeMeal(input: AnalyzeInput): Promise<MealAnalysisResu
   const generationConfig = {
     responseMimeType: "application/json",
     responseSchema: RESPONSE_SCHEMA as any,
-    temperature: 0.1, // Low temperature for factual nutritional data
+    temperature: 0.1,
     topP: 0.8,
     topK: 40,
     maxOutputTokens: 4096,
@@ -132,9 +201,7 @@ Analyze the nutritional content of this specific meal from this Egyptian restaur
 
     parts = [{ text: prompt }];
   } else {
-    // Image input — convert buffer to base64 inline data
     const base64Image = input.imageBuffer.toString("base64");
-
     const imagePart: InlineDataPart = {
       inlineData: {
         data: base64Image,
@@ -155,7 +222,6 @@ Analyze the nutritional content of this specific meal from this Egyptian restaur
       contents: [{ role: "user", parts }],
       generationConfig,
     });
-
     responseText = result.response.text();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -173,11 +239,16 @@ Analyze the nutritional content of this specific meal from this Egyptian restaur
     throw new Error(`Gemini returned invalid JSON: ${responseText.slice(0, 200)}`);
   }
 
-  // Validate required fields
+  return parseAndValidateResponse(parsed);
+}
+
+// ── Helper Parser & Validator ──────────────────────────────
+
+function parseAndValidateResponse(parsed: any): MealAnalysisResult {
   const required = ["mealName", "restaurantName", "calories", "protein", "carbs", "fats"];
   for (const field of required) {
     if (parsed[field] === undefined || parsed[field] === null) {
-      throw new Error(`Gemini response missing required field: "${field}"`);
+      throw new Error(`AI response missing required field: "${field}"`);
     }
   }
 
