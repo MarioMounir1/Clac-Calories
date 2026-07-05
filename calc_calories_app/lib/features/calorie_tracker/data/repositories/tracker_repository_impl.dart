@@ -39,6 +39,37 @@ class TrackerRepositoryImpl implements TrackerRepository {
   }
 
   @override
+  Future<Either<Failure, Map<String, dynamic>>> searchFoods({
+    required String query,
+    String? category,
+    int? limit,
+    int? page,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'q': query,
+        if (category != null) 'category': category,
+        if (limit != null) 'limit': limit,
+        if (page != null) 'page': page,
+      };
+      final response = await apiClient.dio.get('/foods/search', queryParameters: queryParams);
+      return Right(response.data as Map<String, dynamic>);
+    } catch (e) {
+      return Left(_handleError(e, 'Failed to search foods'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getFoodCategories() async {
+    try {
+      final response = await apiClient.dio.get('/foods/categories');
+      return Right(response.data as Map<String, dynamic>);
+    } catch (e) {
+      return Left(_handleError(e, 'Failed to fetch food categories'));
+    }
+  }
+
+  @override
   Future<Either<Failure, Map<String, dynamic>>> logFood({
     required String foodItemId,
     required double servings,

@@ -7,6 +7,13 @@ import '../../../../core/error/failures.dart';
 abstract class TrackerRepository {
   // ── Food Log ──
   Future<Either<Failure, Map<String, dynamic>>> getTodayFoodSummary({String? date});
+  Future<Either<Failure, Map<String, dynamic>>> searchFoods({
+    required String query,
+    String? category,
+    int? limit,
+    int? page,
+  });
+  Future<Either<Failure, Map<String, dynamic>>> getFoodCategories();
   Future<Either<Failure, Map<String, dynamic>>> logFood({
     required String foodItemId,
     required double servings,

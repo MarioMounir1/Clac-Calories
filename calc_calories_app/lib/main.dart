@@ -38,6 +38,7 @@ import 'features/profile/presentation/onboarding_screen.dart';
 import 'features/calorie_tracker/domain/repositories/tracker_repository.dart';
 import 'features/calorie_tracker/data/repositories/tracker_repository_impl.dart';
 import 'features/calorie_tracker/presentation/bloc/dashboard_bloc.dart';
+import 'features/calorie_tracker/presentation/bloc/food_search_bloc.dart';
 import 'features/calorie_tracker/presentation/home_shell_screen.dart';
 import 'features/calorie_tracker/presentation/settings_screen.dart';
 import 'features/calorie_tracker/presentation/food_search_screen.dart';
@@ -148,6 +149,12 @@ class TeneenApp extends StatelessWidget {
             create: (ctx) => CalorieTrackerBloc(
               repository:     ctx.read<MealRepository>(),
               authRepository: ctx.read<AuthRepository>(),
+            ),
+          ),
+          // Food Search
+          BlocProvider<FoodSearchBloc>(
+            create: (ctx) => FoodSearchBloc(
+              repository: ctx.read<TrackerRepository>(),
             ),
           ),
         ],
