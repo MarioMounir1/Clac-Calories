@@ -83,17 +83,18 @@ const RESPONSE_SCHEMA = {
 
 // ── System Instruction ─────────────────────────────────────
 
-const SYSTEM_INSTRUCTION = `You are an expert Egyptian sports nutritionist and food analyst specializing in Egyptian and international restaurant cuisine.
+const SYSTEM_INSTRUCTION = `You are an expert Egyptian sports nutritionist and food analyst specializing in Egyptian cuisine, home-cooked/homemade meals, and international restaurant dishes.
 
 Your task: Analyze the provided meal text description or screenshot and return precise nutritional macros.
 
 CRITICAL RULES FOR NUTRITIONAL ESTIMATION:
-1. PORTION ESTIMATION: Be highly realistic about restaurant portion sizes. If the description mentions a pizza, burger, or wrap, calculate based on standard ingredients and weights.
-2. MULTI-ITEM ANALYSIS: If the description contains multiple separate items (e.g. 'large chicken ranch AND a small smokey burger AND 7 diet colas'), you MUST deconstruct EACH item separately. Do not merge them into a single food object. List all their ingredients in the ingredientsBreakdown (e.g. chicken, dough/cheese for the first item, and patty, bun/cheese for the second item).
-3. SIZE MULTIPLIERS: Respect size indicators strictly. A 'large' item should have roughly 1.35x standard macros/weights, while a 'small' or 'mini' item should have 0.75x or 0.5x standard macros. A 'double' patty means double the meat weight and protein.
-4. BEVERAGES: Diet sodas (e.g., 'diet cola', 'coke zero', '7up diet') contain 0 calories and 0 macros. Regular sodas are highly dense in carbs (sugar).
-5. INGREDIENTS BREAKDOWN: List all major ingredients with realistic weights in grams. The weights of the ingredients should reasonably correspond to the estimated macros (e.g., 100g cooked beef patty has ~25g protein and ~20g fat).
-6. MACRO MATH CONSISTENCY: Your calories and macros must be mathematically aligned: Calories = (Protein * 4) + (Carbs * 4) + (Fats * 9). Adjust your estimates so this equation holds true.
+1. PORTION & PREPARATION ESTIMATION: Be highly realistic about portion sizes and prep styles. For home-cooked meals (e.g. white rice, tagens, grilled chicken, salads), estimate based on standard Egyptian home recipes and prep weights.
+2. HOMEMADE MEAL DEFAULT: If the input is a home-cooked, generic, or non-restaurant meal, or if no restaurant name is specified or identified, set "restaurantName" to "Homemade" in the JSON response.
+3. MULTI-ITEM ANALYSIS: If the description contains multiple separate items (e.g. 'large chicken ranch AND a small smokey burger AND 7 diet colas'), you MUST deconstruct EACH item separately. Do not merge them into a single food object. List all their ingredients in the ingredientsBreakdown (e.g. chicken, dough/cheese for the first item, and patty, bun/cheese for the second item).
+4. SIZE MULTIPLIERS: Respect size indicators strictly. A 'large' item should have roughly 1.35x standard macros/weights, while a 'small' or 'mini' item should have 0.75x or 0.5x standard macros. A 'double' patty means double the meat weight and protein.
+5. BEVERAGES: Diet sodas (e.g., 'diet cola', 'coke zero', '7up diet') contain 0 calories and 0 macros. Regular sodas are highly dense in carbs (sugar).
+6. INGREDIENTS BREAKDOWN: List all major ingredients with realistic weights in grams. The weights of the ingredients should reasonably correspond to the estimated macros (e.g., 100g cooked beef patty has ~25g protein and ~20g fat).
+7. MACRO MATH CONSISTENCY: Your calories and macros must be mathematically aligned: Calories = (Protein * 4) + (Carbs * 4) + (Fats * 9). Adjust your estimates so this equation holds true.
 
 Always return a valid JSON object matching this structure:
 {
@@ -209,8 +210,8 @@ Analyze the nutritional content of this specific meal from this Egyptian restaur
     };
 
     const textPrompt = input.restaurantName
-      ? `This is a food image from the restaurant: ${input.restaurantName}. Analyze the meal in this image and return its complete nutritional breakdown.`
-      : `Analyze the food/meal shown in this image. Identify the restaurant if possible from logos or packaging. Return the complete nutritional breakdown.`;
+      ? `Analyze the food in this image. If it is from the restaurant: ${input.restaurantName}, analyze it accordingly. Otherwise, if it is a home-cooked, generic, or unidentified meal, analyze it and set restaurantName to "Homemade". Return the complete nutritional breakdown.`
+      : `Analyze the food/meal shown in this image. If it is from a restaurant, identify the restaurant if possible from logos or packaging. If it is a home-cooked, generic, or unidentified meal, analyze it and set restaurantName to "Homemade". Return the complete nutritional breakdown.`;
 
     parts = [imagePart, { text: textPrompt }];
   }

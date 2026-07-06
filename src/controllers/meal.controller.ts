@@ -18,9 +18,10 @@ const CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 const TextAnalyzeSchema = z.object({
   restaurantName: z
     .string()
-    .min(1, "Restaurant name is required")
     .max(200)
-    .trim(),
+    .trim()
+    .optional()
+    .default("Homemade"),
   mealDescription: z
     .string()
     .min(2, "Meal description is required")
