@@ -11,7 +11,6 @@ import 'bloc/dashboard_bloc.dart';
 import 'bloc/dashboard_event.dart';
 import 'bloc/dashboard_state.dart';
 import '../domain/repositories/tracker_repository.dart';
-import 'widgets/quick_log_bottom_sheet.dart';
 import 'widgets/scan_meal_bottom_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -171,7 +170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── Quick action buttons ────────────────────────────────────
+          // ── Quick action buttons ──────────────────────────────
           Row(
             children: [
               Expanded(
@@ -183,17 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: () => Navigator.pushNamed(context, '/foods/search'),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildQuickActionCard(
-                  context: context,
-                  title: 'Quick Log',
-                  icon: Icons.edit_note_rounded,
-                  color: AppColors.success,
-                  onTap: () => showQuickLogSheet(context),
-                ),
-              ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildQuickActionCard(
                   context: context,
@@ -232,14 +221,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     final progress = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        gradient: AppColors.cardGradient,
+    return GestureDetector(
+      onTap: () => _showAddDialog(
+        context: context,
+        title: 'Add Calories',
+        unit: 'kcal',
+        color: AppColors.primary,
+        onSubmit: (val) => _logSingleMacro(calories: val),
       ),
-      child: Row(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          gradient: AppColors.cardGradient,
+        ),
+        child: Row(
           children: [
             Stack(
               alignment: Alignment.center,
@@ -280,10 +277,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            // Tap hint
+            Icon(Icons.add_circle_outline_rounded, color: AppColors.primary.withValues(alpha: 0.5), size: 20),
           ],
         ),
-      );
+      ),
+    );
   }
+
 
   Widget _buildCalorieStatRow(String label, String value, Color valueColor) {
     return Row(
@@ -313,44 +315,230 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.homeMacros, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(l10n.homeMacros, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                Text(
+                  'Tap a row to add',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted.withValues(alpha: 0.7)),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
-            _buildMacroProgressRow(l10n.homeProtein, pConsumed, pGoal, AppColors.protein, l10n.unitG),
+            _buildMacroProgressRow(
+              label: l10n.homeProtein,
+              consumed: pConsumed,
+              goal: pGoal,
+              color: AppColors.protein,
+              unit: l10n.unitG,
+              onTap: () => _showAddDialog(
+                context: context,
+                title: 'Add Protein',
+                unit: 'g',
+                color: AppColors.protein,
+                onSubmit: (val) => _logSingleMacro(protein: val),
+              ),
+            ),
             const SizedBox(height: 12),
-            _buildMacroProgressRow(l10n.homeCarbs, cConsumed, cGoal, AppColors.carbs, l10n.unitG),
+            _buildMacroProgressRow(
+              label: l10n.homeCarbs,
+              consumed: cConsumed,
+              goal: cGoal,
+              color: AppColors.carbs,
+              unit: l10n.unitG,
+              onTap: () => _showAddDialog(
+                context: context,
+                title: 'Add Carbs',
+                unit: 'g',
+                color: AppColors.carbs,
+                onSubmit: (val) => _logSingleMacro(carbs: val),
+              ),
+            ),
             const SizedBox(height: 12),
-            _buildMacroProgressRow(l10n.homeFats, fConsumed, fGoal, AppColors.fats, l10n.unitG),
+            _buildMacroProgressRow(
+              label: l10n.homeFats,
+              consumed: fConsumed,
+              goal: fGoal,
+              color: AppColors.fats,
+              unit: l10n.unitG,
+              onTap: () => _showAddDialog(
+                context: context,
+                title: 'Add Fats',
+                unit: 'g',
+                color: AppColors.fats,
+                onSubmit: (val) => _logSingleMacro(fats: val),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMacroProgressRow(String label, double consumed, double goal, Color color, String unit) {
+  Widget _buildMacroProgressRow({
+    required String label,
+    required double consumed,
+    required double goal,
+    required Color color,
+    required String unit,
+    required VoidCallback onTap,
+  }) {
     final pct = goal > 0 ? (consumed / goal).clamp(0.0, 1.0) : 0.0;
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-            Text(
-              '${consumed.round()}$unit / ${goal.round()}$unit',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(width: 10, height: 10,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Text(
+                      '${consumed.round()}$unit / ${goal.round()}$unit',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.add_circle_rounded, size: 16, color: color.withValues(alpha: 0.7)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 6,
+                backgroundColor: AppColors.border,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 6,
-            backgroundColor: AppColors.border,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-          ),
+      ),
+    );
+  }
+
+  // ── Quick-add dialog ─────────────────────────────────
+
+  void _showAddDialog({
+    required BuildContext context,
+    required String title,
+    required String unit,
+    required Color color,
+    required void Function(double) onSubmit,
+  }) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(width: 12, height: 12,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Text(title,
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 17)),
+          ],
         ),
-      ],
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          decoration: InputDecoration(
+            hintText: '0',
+            hintStyle: const TextStyle(color: AppColors.textMuted),
+            suffixText: unit,
+            suffixStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+          ),
+          onSubmitted: (_) {
+            final val = double.tryParse(ctrl.text);
+            if (val != null && val > 0) {
+              Navigator.pop(ctx);
+              onSubmit(val);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final val = double.tryParse(ctrl.text);
+              if (val != null && val > 0) {
+                Navigator.pop(ctx);
+                onSubmit(val);
+              }
+            },
+            child: Text('Add', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _logSingleMacro({
+    double? calories,
+    double? protein,
+    double? carbs,
+    double? fats,
+  }) async {
+    final repo = RepositoryProvider.of<TrackerRepository>(context);
+    // Estimate calories from macros if only macros provided
+    final effectiveCal = calories ??
+        ((protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fats ?? 0) * 9);
+
+    final result = await repo.logManualMeal(
+      mealName: calories != null
+          ? 'Calories'
+          : protein != null
+              ? 'Protein'
+              : carbs != null
+                  ? 'Carbs'
+                  : 'Fats',
+      calories: effectiveCal,
+      protein: protein ?? 0,
+      carbs: carbs ?? 0,
+      fats: fats ?? 0,
+    );
+    if (!mounted) return;
+    result.fold(
+      (f) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(f.message), backgroundColor: AppColors.error),
+      ),
+      (_) {
+        context.read<DashboardBloc>().add(const RefreshDashboard());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added!'),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
     );
   }
 
