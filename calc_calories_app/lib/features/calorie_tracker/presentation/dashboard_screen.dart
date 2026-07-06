@@ -11,6 +11,8 @@ import 'bloc/dashboard_bloc.dart';
 import 'bloc/dashboard_event.dart';
 import 'bloc/dashboard_state.dart';
 import '../domain/repositories/tracker_repository.dart';
+import 'widgets/quick_log_bottom_sheet.dart';
+import 'widgets/scan_meal_bottom_sheet.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -178,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: l10n.foodSearchTitle,
                   icon: Icons.search_rounded,
                   color: AppColors.primary,
-                  onTap: () => Navigator.pushNamed(context, '/foods/search'),
+                  onTap: () => showQuickLogSheet(context),
                 ),
               ),
               const SizedBox(width: 12),
@@ -188,7 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: l10n.scanTitle,
                   icon: Icons.camera_enhance_rounded,
                   color: AppColors.accent,
-                  onTap: () => Navigator.pushNamed(context, '/meals/analyze'),
+                  onTap: () => showScanMealSheet(context),
                 ),
               ),
             ],

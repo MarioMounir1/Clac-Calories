@@ -198,8 +198,6 @@ export async function analyzeMealHandler(
   });
 }
 
-// ── Helper: Log meal to DB ─────────────────────────────────
-
 async function logMealToDb(
   userId: string,
   result: {
@@ -231,3 +229,63 @@ async function logMealToDb(
     select: { id: true },
   });
 }
+
+// ── Manual Meal Log ────────────────────────────────────────
+
+const ManualLogSchema = z.object({
+  mealName: z.string().min(1).max(200).trim().default("Custom meal"),
+  calories: z.number().min(0).max(10000),
+  protein: z.number().min(0).max(1000),
+  carbs: z.number().min(0).max(1000),
+  fats: z.number().min(0).max(1000),
+  mealType: z.enum(["breakfast", "lunch", "dinner", "snack"]).optional().default("snack"),
+});
+
+/**
+ * POST /api/v1/meals/manual
+ * Log a meal with manually entered macros (no AI).
+ */
+export async function manualLogMealHandler(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.id;
+
+  const parsed = ManualLogSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, error: "Invalid input", details: parsed.error.flatten() });
+    return;
+  }
+
+  const { mealName, calories, protein, carbs, fats } = parsed.data;
+
+  const mealLog = await prisma.mealLog.create({
+    data: {
+      userId,
+      mealName,
+      restaurantName: "Manual entry",
+      calories,
+      protein,
+      carbs,
+      fats,
+      ingredientsBreakdown: [],
+      rawAiResponse: null,
+      source: "text",
+    },
+    select: { id: true },
+  });
+
+  console.log(`✅ [Meal] Manual log: ${mealName} — ${calories} kcal`);
+
+  res.status(201).json({
+    success: true,
+    source: "manual",
+    data: {
+      logId: mealLog.id,
+      mealName,
+      calories,
+      protein,
+      carbs,
+      fats,
+      loggedAt: new Date().toISOString(),
+    },
+  });
+}
+

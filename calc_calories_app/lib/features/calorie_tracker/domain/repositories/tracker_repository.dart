@@ -22,6 +22,16 @@ abstract class TrackerRepository {
   });
   Future<Either<Failure, void>> deleteFoodLog(String id);
 
+  // ── Manual Meal Log ──
+  Future<Either<Failure, Map<String, dynamic>>> logManualMeal({
+    String? mealName,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fats,
+    String? mealType,
+  });
+
   // ── Water ──
   Future<Either<Failure, Map<String, dynamic>>> getTodayWater({String? date});
   Future<Either<Failure, Map<String, dynamic>>> logWater({required int amountMl});

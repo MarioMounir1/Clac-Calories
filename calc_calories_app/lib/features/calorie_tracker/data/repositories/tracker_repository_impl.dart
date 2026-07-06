@@ -100,6 +100,31 @@ class TrackerRepositoryImpl implements TrackerRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> logManualMeal({
+    String? mealName,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fats,
+    String? mealType,
+  }) async {
+    try {
+      final data = {
+        'mealName': mealName ?? 'Custom meal',
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fats': fats,
+        if (mealType != null) 'mealType': mealType,
+      };
+      final response = await apiClient.dio.post('/meals/manual', data: data);
+      return Right(response.data as Map<String, dynamic>);
+    } catch (e) {
+      return Left(_handleError(e, 'Failed to log meal'));
+    }
+  }
+
   // ── Water ──
 
   @override

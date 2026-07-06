@@ -6,7 +6,7 @@
 
 import { Router } from "express";
 import { register, login, getMe, updateGoals } from "../controllers/user.controller";
-import { analyzeMealHandler } from "../controllers/meal.controller";
+import { analyzeMealHandler, manualLogMealHandler } from "../controllers/meal.controller";
 import { getMealHistory, deleteMealLog } from "../controllers/history.controller";
 import { getSuggestions } from "../controllers/suggestion.controller";
 import { updateProfile, getTdee } from "../controllers/profile.controller";
@@ -213,6 +213,14 @@ router.put("/meal-plans/:id/eaten", requireAuth, markAsEaten);
  * @rateLimit 30 requests per minute per user
  */
 router.post("/meals/analyze", requireAuth, analyzeMealLimiter, analyzeMealHandler);
+
+/**
+ * @route   POST /api/v1/meals/manual
+ * @desc    Manually log a meal with known macros (no AI)
+ * @access  Private
+ * @body    { mealName?, calories, protein, carbs, fats, mealType? }
+ */
+router.post("/meals/manual", requireAuth, manualLogMealHandler);
 
 /**
  * @route   GET /api/v1/meals/history
