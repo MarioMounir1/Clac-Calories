@@ -16,6 +16,8 @@ import '../domain/repositories/meal_repository.dart';
 import 'bloc/calorie_tracker_bloc.dart';
 import 'bloc/calorie_tracker_event.dart';
 import 'bloc/calorie_tracker_state.dart';
+import 'bloc/dashboard_bloc.dart';
+import 'bloc/dashboard_event.dart';
 import 'widgets/macro_ring_card.dart';
 
 class AnalyzeMealScreen extends StatefulWidget {
@@ -168,7 +170,7 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
               ),
               const SizedBox(height: 20),
               Text(
-                'Scan Meal Screenshot',
+                'Scan Your Meal',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -177,7 +179,7 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
               ),
               const SizedBox(height: 6),
               Text(
-                'Upload a photo of your meal or menu',
+                'Take a photo of your meal or pick from gallery',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -190,6 +192,7 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
                     child: _ImageSourceButton(
                       icon: Icons.camera_alt_rounded,
                       label: 'Camera',
+                      subtitle: 'Take a photo now',
                       onTap: () {
                         Navigator.pop(context);
                         _pickImage(ImageSource.camera);
@@ -201,6 +204,7 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
                     child: _ImageSourceButton(
                       icon: Icons.photo_library_rounded,
                       label: 'Gallery',
+                      subtitle: 'Pick existing photo',
                       onTap: () {
                         Navigator.pop(context);
                         _pickImage(ImageSource.gallery);
@@ -221,7 +225,10 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
     FocusScope.of(context).unfocus();
     context.read<CalorieTrackerBloc>().add(
           AnalyzeTextMealSubmitted(
-            restaurantName: _restaurantController.text.trim(),
+            // Restaurant is optional — empty string falls back to 'Homemade' on backend
+            restaurantName: _restaurantController.text.trim().isEmpty
+                ? 'Homemade'
+                : _restaurantController.text.trim(),
             mealDescription: _mealController.text.trim(),
           ),
         );
@@ -294,6 +301,8 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
             );
           }
           if (state is CalorieTrackerAnalysisSuccess) {
+            // Backend already saved the meal to DB — refresh daily totals
+            context.read<DashboardBloc>().add(const RefreshDashboard());
             if (!isPremium) {
               _fetchSuggestions();
             }
@@ -388,15 +397,13 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
                 onFieldSubmitted: (_) => onSubmit(),
                 enabled: !isLoading,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. Buffalo Burger',
+                  hintText: 'e.g. Buffalo Burger (optional)',
                   prefixIcon: Icon(
                     Icons.storefront_rounded,
                     color: AppColors.textMuted,
                     size: 20,
                   ),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Restaurant name is required' : null,
               );
             },
             optionsViewBuilder: (ctx, onSelected, options) {
@@ -610,10 +617,61 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
                   ],
                 ),
               ),
+              const Spacer(),
+              // ✅ Logged badge — appears immediately since backend already saved
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add_circle_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Added to today',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           MacroRingCard(meal: state.mealLog),
+          const SizedBox(height: 12),
+          // ── View on Dashboard nudge ────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.dashboard_rounded, color: AppColors.primary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'This meal has been logged to your daily macros. Check the Home tab to see your updated progress.',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           
           if (_suggestions.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -827,11 +885,13 @@ class _AnalyzeMealScreenState extends State<AnalyzeMealScreen>
 class _ImageSourceButton extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
   final VoidCallback onTap;
 
   const _ImageSourceButton({
     required this.icon,
     required this.label,
+    this.subtitle,
     required this.onTap,
   });
 
@@ -859,6 +919,17 @@ class _ImageSourceButton extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
