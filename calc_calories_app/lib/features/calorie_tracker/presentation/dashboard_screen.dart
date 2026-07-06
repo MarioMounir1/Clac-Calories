@@ -180,10 +180,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: l10n.foodSearchTitle,
                   icon: Icons.search_rounded,
                   color: AppColors.primary,
+                  onTap: () => Navigator.pushNamed(context, '/foods/search'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildQuickActionCard(
+                  context: context,
+                  title: 'Quick Log',
+                  icon: Icons.edit_note_rounded,
+                  color: AppColors.success,
                   onTap: () => showQuickLogSheet(context),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _buildQuickActionCard(
                   context: context,
@@ -195,6 +205,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 16),
 
           // ── Water progress card ─────────────────────────────────────
