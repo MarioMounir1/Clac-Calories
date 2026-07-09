@@ -6,8 +6,8 @@ import '../../../core/theme/app_colors.dart';
 
 import 'dashboard_screen.dart';
 import 'gyms_screen.dart';
-import 'food_search_screen.dart';
 import 'market_screen.dart';
+import 'workout_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/quick_log_bottom_sheet.dart';
 
@@ -23,9 +23,9 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
 
   final List<Widget> _screens = [
     const DashboardScreen(),
-    const FoodSearchScreen(),
-    const GymsScreen(),
+    const WorkoutScreen(),
     const MarketScreen(),
+    const GymsScreen(),
     const SettingsScreen(),
   ];
 
@@ -75,10 +75,10 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(Icons.home_rounded, 0, true),
-              _buildNavItem(Icons.search_rounded, 1, false),
-              _buildNavItem(Icons.fitness_center_rounded, 2, true),
-              _buildNavItem(Icons.shopping_bag_rounded, 3, true),
+              _buildNavItem(Icons.home_rounded, 0, false),
+              _buildNavItem(Icons.fitness_center_rounded, 1, true),
+              _buildNavItem(Icons.shopping_bag_rounded, 2, false),
+              _buildNavItem(Icons.location_on_rounded, 3, false),
               _buildNavItem(Icons.person_rounded, 4, false),
             ],
           ),
