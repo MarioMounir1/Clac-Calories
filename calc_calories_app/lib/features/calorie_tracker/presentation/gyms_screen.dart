@@ -224,7 +224,7 @@ class _GymsScreenState extends State<GymsScreen> {
               left: isArabic ? 16 : null,
               top: 0,
               bottom: 0,
-              child: Opacity(
+              child: const Opacity(
                 opacity: 0.08,
                 child: Icon(
                   Icons.fitness_center_rounded,
