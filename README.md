@@ -1,6 +1,6 @@
 # 🥗 Calc-Calories (The Teneen | التنين)
 
-> **A premium, high-performance local & cloud AI-powered nutrition ecosystem. Reverse-engineer restaurant macros with Google Gemini, scan plates privately using local Llama vision models on-device, and overlay nutritional metrics on Talabat via a Chrome extension.**
+> **A premium, high-performance local & cloud AI-powered nutrition ecosystem. Reverse-engineer restaurant macros with Google Gemini, or scan plates privately using local Llama vision models on-device.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
@@ -13,11 +13,10 @@
 
 ## 📖 Overview
 
-**Calc-Calories** is an elite, hybrid-AI fitness suite designed to solve the challenge of tracking calories and macros in the Egyptian and international food markets. The ecosystem is composed of three primary pillars:
+**Calc-Calories** is an elite, hybrid-AI fitness suite designed to solve the challenge of tracking calories and macros in the Egyptian and international food markets. The ecosystem is composed of two primary pillars:
 
-1.  **AI-First Mobile App (Flutter)**: A gorgeous dark-mode, multi-lingual app (AR/EN) supporting RTL layout, active workouts, water logging, weight logs, and a dedicated **Local AI Meal Scan** interface.
-2.  **Multimodal REST Backend (Node.js & Express)**: An administrative API engine that orchestrates queries to Google Gemini (for cloud text/image queries) and local Ollama inference models (for offline private tracking). It tracks user targets, caches food logs in PostgreSQL via Prisma, and rate-limits requests.
-3.  **Talabat Nutrition Overlay (Chrome Extension)**: A browser companion that reads menu items from Talabat pages and displays macro cards on screen at zero API cost once cached.
+1.  **AI-First Mobile App (mobile/)**: A gorgeous dark-mode, multi-lingual app (AR/EN) supporting RTL layout, active workouts, water logging, weight logs, and a dedicated **Local AI Meal Scan** interface.
+2.  **Multimodal REST Backend (backend/)**: An administrative API engine that orchestrates queries to Google Gemini (for cloud text/image queries) and local Ollama inference models (for offline private tracking). It tracks user targets, caches food logs in PostgreSQL via Prisma, and rate-limits requests.
 
 ---
 
@@ -26,7 +25,7 @@
 ```
                  ┌──────────────────────────────────────┐
                  │        Flutter Mobile Client         │
-                 │      (The Teneen / Android & iOS)    │
+                 │              (mobile/)               │
                  └──────┬────────────┬────────────▲─────┘
                         │            │            │
              (HTTPS / REST)          │            │
@@ -58,30 +57,22 @@
 *   🥗 **Dynamic Macro Feedback**: Banners dynamically analyze the nutritional value of scanned plates (e.g., notifying you of high fat content or offering actionable suggestions to hit protein targets).
 *   🤖 **Dual Cloud AI Engine**: Seamlessly switches between Gemini for hyper-accurate commercial food estimations and local Ollama models.
 *   ⚡ **Egyptian Restaurant Seed**: 13 Egyptian favorites (Abo Tareq, Buffalo Burger, Kazouza, etc.) pre-mapped with deep colloquial Egyptian food knowledge (e.g. knowing 'Koshary B-Laban' is a heavy dessert, not traditional savory Koshary).
-*   🌐 **Talabat Smart Badge Overlay**: Instantly updates web menu items with badges displaying protein, carb, fat, and calorie ranges.
 
 ---
 
 ## 📂 Project Structure
 
 ```
-Calc-calories/
-├── calc_calories_app/           # 📱 Flutter Mobile Application
-│   ├── lib/
-│   │   ├── core/                # Theme, Network (Dio Client), L10n Localization
-│   │   └── features/
-│   │       ├── auth/            # Bloc Authentication state
-│   │       ├── profile/         # Onboarding & physical targets (TDEE metrics)
-│   │       └── calorie_tracker/ # Main views, models (LlamaMealResponse), LocalLlamaService
-├── prisma/                      # 🗄️ Database migration and seed data
-│   ├── schema.prisma            # PostgreSQL Database Schema 
-│   └── seed.ts                  # Bilingual Egyptian restaurants mock seeds
-├── src/                         # 🛠️ Node.js REST Backend
-│   ├── controllers/             # Local Llama & Meal Controllers
-│   ├── routes/                  # API routers (v1 Express routing)
-│   ├── services/                # Ollama, Gemini, Redis, and Prisma services
-│   └── app.ts                   # Express server config
-└── talabat-nutrition-extension/ # 🌐 Chrome Browser Extension
+Calc-calories/ (Workspace Root)
+├── backend/                     # 🛠️ Node.js REST Backend
+│   ├── src/                     # Cleaned application source (mobile endpoints only)
+│   ├── prisma/                  # PostgreSQL Database Schema and migrations
+│   └── package.json             # Backend dependencies and scripts
+└── mobile/                      # 📱 Flutter Mobile Application (formerly calc_calories_app)
+    ├── lib/
+    │   ├── core/                # Theme, Network (Dio Client), L10n Localization
+    │   └── features/            # Authentication, Onboarding, Calorie Tracker BLoCs
+    └── pubspec.yaml             # Flutter dependencies
 ```
 
 ---
@@ -95,15 +86,19 @@ Calc-calories/
 *   [Ollama](https://ollama.com/) (For local offline model processing)
 
 ### 2. Configure Backend
-1. Clone the project and install:
+1. Navigate into the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
    ```bash
    npm install
    ```
-2. Set up environment:
+3. Set up environment config:
    ```bash
    cp .env.example .env
    ```
-3. Update `.env` with your variables:
+4. Update `.env` with your variables:
    ```env
    DATABASE_URL="postgresql://user:password@localhost:5432/nutrition_db?schema=public"
    REDIS_URL="redis://localhost:6379"
@@ -114,12 +109,12 @@ Calc-calories/
    OLLAMA_MODEL="llama3"
    JWT_SECRET="generate-a-secure-random-key"
    ```
-4. Push DB migrations and run pre-seed scripts:
+5. Push DB migrations and run pre-seed scripts:
    ```bash
    npm run db:push
    npm run db:seed
    ```
-5. Run backend server:
+6. Run backend server:
    ```bash
    npm run dev
    ```
@@ -136,9 +131,9 @@ ollama pull llava
 ```
 
 ### 4. Run Flutter Mobile App
-1. Navigate into the app workspace:
+1. Navigate into the mobile app directory:
    ```bash
-   cd calc_calories_app
+   cd mobile
    ```
 2. Verify package dependencies:
    ```bash
