@@ -9,10 +9,8 @@ dotenv.config();
 
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import nutritionRouter from './routes/nutrition.routes';
 import v1Router from './routes/v1.routes';
 import { errorHandler } from "./middleware/validation";
-import "./services/worker";
 import prisma from "./services/prisma.service";
 
 const app = express();
@@ -50,9 +48,6 @@ app.get("/health", (_req: Request, res: Response) => {
 
 // ── Routes ─────────────────────────────────────────────────
 
-// Legacy: Chrome extension / B2B API (preserved)
-app.use("/api/nutrition", nutritionRouter);
-
 // New: Mobile App API (v1)
 app.use("/api/v1", v1Router);
 
@@ -79,29 +74,8 @@ if (process.env.NODE_ENV !== "test") {
     console.log(`   Profile:  GET  /api/v1/users/me`);
     console.log(`   Analyze:  POST /api/v1/meals/analyze`);
     console.log(`   History:  GET  /api/v1/meals/history`);
-    console.log(`🔧  Legacy API:`);
-    console.log(`   Nutrition: POST /api/nutrition/calculate`);
+    console.log(`🔧  Legacy API: none`);
   });
 }
-
-// ── Bootstrap ──────────────────────────────────────────────
-
-async function bootstrapApiKey() {
-  try {
-    await prisma.company.upsert({
-      where: { apiKey: 'talabat_test_key_123' },
-      update: {},
-      create: {
-        id: '1',
-        name: 'Talabat',
-        apiKey: 'talabat_test_key_123',
-      },
-    });
-    console.log('🚀 [Database] Production API Key Synchronized.');
-  } catch (err) {
-    console.error('❌ [Database] Failed to sync API key:', err);
-  }
-}
-bootstrapApiKey();
 
 export default app;
