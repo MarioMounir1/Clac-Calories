@@ -50,6 +50,7 @@ import 'features/calorie_tracker/presentation/bloc/weight_bloc.dart';
 import 'features/calorie_tracker/presentation/bloc/meal_plan_bloc.dart';
 import 'features/calorie_tracker/presentation/active_workout_screen.dart';
 import 'features/calorie_tracker/presentation/gyms_screen.dart';
+import 'features/calorie_tracker/presentation/splash_screen.dart';
 
 // ── Language Cubit ────────────────────────────────────────────
 // Simple cubit to hold and switch the app locale.
@@ -217,8 +218,9 @@ class TeneenApp extends StatelessWidget {
               },
 
               // ── Routes ──────────────────────────────────
-              initialRoute: '/',
+              initialRoute: '/splash',
               routes: {
+                '/splash':  (_) => const SplashScreen(),
                 '/':        (_) => const AuthWrapper(),
                 '/login':   (_) => const LoginScreen(),
                 '/history': (_) => const HistoryScreen(),
