@@ -1,10 +1,100 @@
 // lib/features/calorie_tracker/data/models/workout_models.dart
 // Aura — Workout Data Models
 //
+// SessionExercise   → one exercise entry from the backend currentSession
+// TopHistoricalSet  → contextual last-week best, keyed to the FIRST exercise
+// CurrentSession    → today's full session object from backend
 // RoutineCatalogue  → static set of recommended splits per frequency
 // RoutineSuggestion → a selectable training split with breakdown
 // WorkoutLog        → a live logging session (exercise + sets)
 // ExerciseSet       → one logged set (weight, reps, locked state)
+
+// ═══════════════════════════════════════════════════════════════
+// SessionExercise
+// ═══════════════════════════════════════════════════════════════
+
+class SessionExercise {
+  final String name;
+  final int targetSets;
+  final String muscleGroup;
+  final double? lastWeekWeight;
+  final int? lastWeekReps;
+
+  const SessionExercise({
+    required this.name,
+    required this.targetSets,
+    required this.muscleGroup,
+    this.lastWeekWeight,
+    this.lastWeekReps,
+  });
+
+  factory SessionExercise.fromJson(Map<String, dynamic> j) => SessionExercise(
+        name:           j['name'] as String? ?? 'Exercise',
+        targetSets:     (j['targetSets'] as num?)?.toInt() ?? 3,
+        muscleGroup:    j['muscleGroup'] as String? ?? '',
+        lastWeekWeight: (j['lastWeekWeight'] as num?)?.toDouble(),
+        lastWeekReps:   (j['lastWeekReps'] as num?)?.toInt(),
+      );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TopHistoricalSet
+// ═══════════════════════════════════════════════════════════════
+
+class TopHistoricalSet {
+  final String exerciseName;
+  final double weight;
+  final int reps;
+  final String progressionDelta;
+
+  const TopHistoricalSet({
+    required this.exerciseName,
+    required this.weight,
+    required this.reps,
+    required this.progressionDelta,
+  });
+
+  factory TopHistoricalSet.fromJson(Map<String, dynamic> j) => TopHistoricalSet(
+        exerciseName:     j['exerciseName'] as String? ?? 'Exercise',
+        weight:           (j['weight'] as num?)?.toDouble() ?? 0,
+        reps:             (j['reps'] as num?)?.toInt() ?? 0,
+        progressionDelta: j['progressionDelta'] as String? ?? '',
+      );
+
+  String get displayLabel =>
+      '$exerciseName: ${weight.toStringAsFixed(0)} kg × $reps reps';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CurrentSession  — today's active plan from the backend
+// ═══════════════════════════════════════════════════════════════
+
+class CurrentSession {
+  final String routineName;
+  final String todayDayName;
+  final List<SessionExercise> exercises;
+  final TopHistoricalSet? topHistoricalSet;
+
+  const CurrentSession({
+    required this.routineName,
+    required this.todayDayName,
+    required this.exercises,
+    this.topHistoricalSet,
+  });
+
+  bool get isRestDay => exercises.isEmpty;
+
+  factory CurrentSession.fromJson(Map<String, dynamic> j) => CurrentSession(
+        routineName:     j['routineName'] as String? ?? 'Workout',
+        todayDayName:    j['todayDayName'] as String? ?? 'Training Day',
+        exercises:       (j['exercises'] as List<dynamic>? ?? [])
+            .map((e) => SessionExercise.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        topHistoricalSet: j['topHistoricalSet'] != null
+            ? TopHistoricalSet.fromJson(j['topHistoricalSet'] as Map<String, dynamic>)
+            : null,
+      );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // RoutineSuggestion
@@ -213,6 +303,60 @@ class WorkoutLog {
           targetWeightKg: 75, targetReps: 10,
         ),
       ],
+    );
+  }
+
+  /// Build a live WorkoutLog from the backend CurrentSession.
+  /// Always uses the FIRST exercise in today's list.
+  factory WorkoutLog.fromSession(CurrentSession session) {
+    if (session.isRestDay || session.exercises.isEmpty) {
+      return WorkoutLog.defaultPushDay();
+    }
+
+    final ex = session.exercises.first;
+    final totalSets = ex.targetSets.clamp(3, 6);
+
+    // Build set labels dynamically based on totalSets
+    final sets = <ExerciseSet>[];
+    for (int i = 0; i < totalSets; i++) {
+      final setIndex = i + 1;
+      String label;
+      double? weight = ex.lastWeekWeight;
+      int? reps = ex.lastWeekReps;
+
+      if (i == 0) {
+        label = 'Warm-up';
+        weight = (ex.lastWeekWeight != null) ? ex.lastWeekWeight! * 0.7 : null;
+        reps = (ex.lastWeekReps != null) ? (ex.lastWeekReps! + 2) : null;
+      } else if (i == totalSets - 1 && totalSets >= 4) {
+        label = 'Back-off Set';
+        weight = (ex.lastWeekWeight != null) ? ex.lastWeekWeight! * 0.88 : null;
+      } else if (i == totalSets - 2 && totalSets >= 4) {
+        label = 'Top Set';
+        weight = (ex.lastWeekWeight != null) ? ex.lastWeekWeight! + 2.5 : null;
+        reps = (ex.lastWeekReps != null) ? (ex.lastWeekReps! - 2).clamp(1, 20) : null;
+      } else {
+        label = 'Working Set';
+      }
+
+      sets.add(ExerciseSet(
+        setIndex:        setIndex,
+        label:           label,
+        targetWeightKg:  weight != null ? double.parse(weight.toStringAsFixed(1)) : null,
+        targetReps:      reps,
+      ));
+    }
+
+    final top = session.topHistoricalSet;
+    final perfLabel = top != null
+        ? '${top.weight.toStringAsFixed(0)} kg × ${top.reps} reps'
+        : null;
+
+    return WorkoutLog(
+      exerciseName:          ex.name,
+      muscleGroup:           ex.muscleGroup,
+      lastWeekTopPerformance: perfLabel,
+      sets:                  sets,
     );
   }
 
