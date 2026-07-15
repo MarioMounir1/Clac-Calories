@@ -48,7 +48,6 @@ import 'features/calorie_tracker/presentation/bloc/water_bloc.dart';
 import 'features/calorie_tracker/presentation/water_tracking_screen.dart';
 import 'features/calorie_tracker/presentation/bloc/weight_bloc.dart';
 import 'features/calorie_tracker/presentation/bloc/meal_plan_bloc.dart';
-import 'features/calorie_tracker/presentation/active_workout_screen.dart';
 import 'features/calorie_tracker/presentation/gyms_screen.dart';
 import 'features/calorie_tracker/presentation/splash_screen.dart';
 
@@ -230,7 +229,6 @@ class TeneenApp extends StatelessWidget {
                 '/meals/analyze': (_) => const AnalyzeMealScreen(),
                 '/water/progress': (_) => const WaterTrackingScreen(),
                 '/meals/ai-suggestion': (_) => const AiSuggestionScreen(),
-                '/workout/active': (_) => const ActiveWorkoutScreen(),
                 '/gyms': (_) => const GymsScreen(),
               },
             );
