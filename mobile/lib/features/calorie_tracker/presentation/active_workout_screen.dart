@@ -34,15 +34,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Timer? _restTimer;
 
   // Design tokens aligned with dashboard colors
-  static const Color bgColor = Color(0xFF030712);
-  static const Color cardColor = Color(0xFF0D1117);
-  static const Color cardElevColor = Color(0xFF111827);
-  static const Color borderDimColor = Color(0xFF1F2937);
+  static const Color bgColor = Color(0xFF090C15);
+  static const Color cardColor = Color(0xFF121824);
+  static const Color cardElevColor = Color(0xFF1B2232);
+  static const Color borderDimColor = Color(0xFF222B3F);
   static const Color borderMidColor = Color(0xFF374151);
-  static const Color cyanColor = Color(0xFF00B4D8);
-  static const Color textPriColor = Color(0xFFF9FAFB);
-  static const Color textSecColor = Color(0xFF9CA3AF);
-  static const Color textMutedColor = Color(0xFF6B7280);
+  static const Color cyanColor = Color(0xFF00BCD4);
+  static const Color textPriColor = Color(0xFFFFFFFF);
+  static const Color textSecColor = Color(0xFF8E929C);
+  static const Color textMutedColor = Color(0xFF5D616B);
 
   @override
   void initState() {
