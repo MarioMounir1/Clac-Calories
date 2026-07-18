@@ -170,27 +170,30 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Column(
                           children: [
                             Container(
-                              width: 72,
-                              height: 72,
+                              width: 88,
+                              height: 88,
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFFFB74D), Color(0xFFFF5722)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                                shape: BoxShape.circle,
+                                color: AppColors.surface,
+                                border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.5),
+                                  width: 1.6,
                                 ),
-                                borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFFFF5722).withOpacity(0.3),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 6),
+                                    color: AppColors.primary.withOpacity(0.25),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.local_fire_department_rounded,
-                                color: Colors.black,
-                                size: 38,
+                              child: const Center(
+                                child: CustomPaint(
+                                  size: Size(44, 44),
+                                  painter: _AuraLogoPainter(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -440,4 +443,54 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
+}
+
+class _AuraLogoPainter extends CustomPainter {
+  final Color color;
+
+  const _AuraLogoPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // Anchor points for the stylized A to match the AURA brand logo
+    final apex = Offset(w * 0.50, h * 0.10);
+    final bottomLeft = Offset(w * 0.12, h * 0.88);
+    final bottomRight = Offset(w * 0.88, h * 0.88);
+    
+    // Dynamic sharp crossbar extending to the right
+    final crossLeft = Offset(w * 0.28, h * 0.58);
+    final crossRight = Offset(w * 0.95, h * 0.42);
+
+    // Glow paint
+    final glowPaint = Paint()
+      ..color = color.withOpacity(0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+
+    // Main sharp line paint
+    final linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      ..moveTo(bottomLeft.dx, bottomLeft.dy)
+      ..lineTo(apex.dx, apex.dy)
+      ..lineTo(bottomRight.dx, bottomRight.dy)
+      ..moveTo(crossLeft.dx, crossLeft.dy)
+      ..lineTo(crossRight.dx, crossRight.dy);
+
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
