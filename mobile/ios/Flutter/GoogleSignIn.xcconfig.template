@@ -1,0 +1,20 @@
+// ── GoogleSignIn Configuration ─────────────────────────────────────────────
+// Copy this file to ios/Flutter/GoogleSignIn.xcconfig and fill in your values
+// from the GoogleService-Info.plist downloaded from Google Cloud Console / Firebase.
+//
+// NEVER commit the real GoogleSignIn.xcconfig to git — add it to .gitignore.
+// This file is the safe template to commit instead.
+//
+// Steps:
+//  1. Go to https://console.firebase.google.com (or https://console.cloud.google.com)
+//  2. Download GoogleService-Info.plist for your iOS app
+//  3. Open it and copy the values below
+//  4. Rename this file to GoogleSignIn.xcconfig and fill in the real values
+//  5. Include it in ios/Flutter/Debug.xcconfig and ios/Flutter/Release.xcconfig:
+//       #include "GoogleSignIn.xcconfig"
+
+GOOGLE_CLIENT_ID = YOUR_CLIENT_ID_HERE
+// e.g. 123456789-abc123.apps.googleusercontent.com
+
+GOOGLE_REVERSED_CLIENT_ID = YOUR_REVERSED_CLIENT_ID_HERE
+// e.g. com.googleusercontent.apps.123456789-abc123
