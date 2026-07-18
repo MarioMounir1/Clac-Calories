@@ -179,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                       Text('Create Account', style: _RS.pageTitle),
                       const SizedBox(height: 8),
                       Text(
-                        'Join Calc Calories and start tracking macros',
+                        'Register below to engine your nutrition.',
                         style: _RS.pageSub,
                       ),
                       const SizedBox(height: 36),
