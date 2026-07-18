@@ -48,6 +48,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       age: event.age,
       weightKg: event.weightKg,
       heightCm: event.heightCm,
+      targetWeightKg: event.targetWeightKg,
       gender: event.gender,
       activityLevel: event.activityLevel,
       goal: event.goal,

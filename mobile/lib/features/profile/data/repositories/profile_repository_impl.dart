@@ -20,6 +20,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     int? age,
     double? weightKg,
     double? heightCm,
+    double? targetWeightKg,
     String? gender,
     String? activityLevel,
     String? goal,
@@ -33,6 +34,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       if (age != null) data['age'] = age;
       if (weightKg != null) data['weightKg'] = weightKg;
       if (heightCm != null) data['heightCm'] = heightCm;
+      if (targetWeightKg != null) data['targetWeightKg'] = targetWeightKg;
       if (gender != null) data['gender'] = gender;
       if (activityLevel != null) data['activityLevel'] = activityLevel;
       if (goal != null) data['goal'] = goal;

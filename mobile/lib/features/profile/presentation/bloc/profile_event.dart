@@ -17,6 +17,7 @@ class UpdateProfileEvent extends ProfileEvent {
   final int? age;
   final double? weightKg;
   final double? heightCm;
+  final double? targetWeightKg; // ← new: goal weight from onboarding
   final String? gender;
   final String? activityLevel;
   final String? goal;
@@ -29,6 +30,7 @@ class UpdateProfileEvent extends ProfileEvent {
     this.age,
     this.weightKg,
     this.heightCm,
+    this.targetWeightKg,
     this.gender,
     this.activityLevel,
     this.goal,
@@ -43,6 +45,7 @@ class UpdateProfileEvent extends ProfileEvent {
         age,
         weightKg,
         heightCm,
+        targetWeightKg,
         gender,
         activityLevel,
         goal,
