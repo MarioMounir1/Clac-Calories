@@ -16,6 +16,7 @@ const UpdateProfileSchema = z.object({
   age:              z.number().int().min(5).max(120).optional(),
   weightKg:         z.number().min(20).max(400).optional(),
   heightCm:         z.number().min(50).max(300).optional(),
+  targetWeightKg:   z.number().min(20).max(400).optional(), // goal weight from onboarding
   gender:           z.enum(["male", "female"]).optional(),
   activityLevel:    z.enum(["sedentary", "lightly_active", "moderate", "very_active"]).optional(),
   goal:             z.enum(["lose", "maintain", "gain"]).optional(),
@@ -147,6 +148,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
         ...(data.age              !== undefined && { age:              data.age }),
         ...(data.weightKg         !== undefined && { weightKg:         data.weightKg }),
         ...(data.heightCm         !== undefined && { heightCm:         data.heightCm }),
+        ...(data.targetWeightKg   !== undefined && { targetWeightKg:   data.targetWeightKg }),
         ...(data.gender           !== undefined && { gender:           data.gender }),
         ...(data.activityLevel    !== undefined && { activityLevel:    data.activityLevel }),
         ...(data.goal             !== undefined && { goal:             data.goal }),
@@ -162,6 +164,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
         age:              true,
         weightKg:         true,
         heightCm:         true,
+        targetWeightKg:   true,
         gender:           true,
         activityLevel:    true,
         goal:             true,

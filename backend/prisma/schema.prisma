@@ -85,6 +85,7 @@ model User {
   age              Int?
   weightKg         Float?
   heightCm         Float?
+  targetWeightKg   Float?      // goal weight set during onboarding
   gender           String?     // male | female
   activityLevel    String      @default("moderate") // sedentary | lightly_active | moderate | very_active
   goal             String      @default("maintain") // lose | maintain | gain
