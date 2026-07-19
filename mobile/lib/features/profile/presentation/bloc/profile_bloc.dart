@@ -31,10 +31,21 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
     profileResult.fold(
       (failure) => emit(ProfileFailure(failure.message)),
-      (user) => emit(ProfileLoaded(
-        user: user,
-        isOnboardingCompleted: isOnboardingCompleted,
-      )),
+      (user) {
+        // Automatically determine onboarding complete if they have basic info set in the DB
+        final bool actuallyCompleted = isOnboardingCompleted ||
+            (user['age'] != null && user['weightKg'] != null && user['heightCm'] != null);
+
+        // If it was true in DB but false in local prefs, sync it back to local prefs
+        if (actuallyCompleted && !isOnboardingCompleted) {
+          repository.setOnboardingCompleted(true);
+        }
+
+        emit(ProfileLoaded(
+          user: user,
+          isOnboardingCompleted: actuallyCompleted,
+        ));
+      },
     );
   }
 
