@@ -3,6 +3,7 @@
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../utils/constants.dart';
 
@@ -80,6 +81,10 @@ class ApiClient {
     await _secureStorage.delete(key: AppConstants.tokenKey);
     await _secureStorage.delete(key: AppConstants.userIdKey);
     await _secureStorage.delete(key: 'is_premium');
+    
+    // Clear onboarding flag from shared preferences as well
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('onboarding_completed');
   }
 
   /// Check if user is authenticated
