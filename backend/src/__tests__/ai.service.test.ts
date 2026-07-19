@@ -25,19 +25,12 @@ jest.mock('@google/generative-ai', () => {
 });
 
 const mockResponse = {
-  mealName: 'Single Bacon Mushroom Jack',
-  restaurantName: 'Buffalo Burger',
+  dish_name: 'Single Bacon Mushroom Jack',
   calories: 650,
   protein: 42,
   carbs: 48,
   fats: 28,
-  ingredientsBreakdown: [
-    { ingredient: 'Beef Patty (Quarter Pound)', estimatedWeightGrams: 113 },
-    { ingredient: 'Brioche Bun', estimatedWeightGrams: 60 },
-    { ingredient: 'Bacon Strips', estimatedWeightGrams: 30 },
-    { ingredient: 'Mushrooms', estimatedWeightGrams: 40 },
-    { ingredient: 'Monterey Jack Cheese', estimatedWeightGrams: 28 },
-  ],
+  confidence_score: 0.95,
 };
 
 describe('AI Service — analyzeMeal()', () => {
@@ -74,24 +67,7 @@ describe('AI Service — analyzeMeal()', () => {
     });
     expect(result.calories).toBeGreaterThan(0);
     expect(result.protein).toBeGreaterThan(0);
-    expect(result.ingredientsBreakdown.length).toBeGreaterThan(0);
-  });
-
-  it('validates that ingredientsBreakdown items have required fields', async () => {
-    const input: AnalyzeTextInput = {
-      type: 'text',
-      restaurantName: 'KFC Egypt',
-      mealDescription: 'Zinger Burger Meal',
-    };
-
-    const result = await analyzeMeal(input);
-
-    result.ingredientsBreakdown.forEach((item) => {
-      expect(item).toHaveProperty('ingredient');
-      expect(item).toHaveProperty('estimatedWeightGrams');
-      expect(typeof item.ingredient).toBe('string');
-      expect(typeof item.estimatedWeightGrams).toBe('number');
-    });
+    expect(result.ingredientsBreakdown).toBeInstanceOf(Array);
   });
 
   it('throws when Gemini returns invalid JSON', async () => {
