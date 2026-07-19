@@ -120,15 +120,14 @@ describe('POST /api/v1/meals/analyze — Text Mode', () => {
     expect(res.body.code).toBe('MISSING_TOKEN');
   });
 
-  it('returns 400 when restaurantName is missing', async () => {
+  it('succeeds (returns 201) when restaurantName is missing by defaulting it', async () => {
     const res = await request(app)
       .post('/api/v1/meals/analyze')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ mealDescription: 'Single Burger' });
 
-    expect(res.status).toBe(400);
-    expect(res.body.success).toBe(false);
-    expect(res.body.code).toBe('VALIDATION_ERROR');
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
   });
 
   it('returns 400 when mealDescription is missing', async () => {
