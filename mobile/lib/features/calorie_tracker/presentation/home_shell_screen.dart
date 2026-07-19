@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../profile/presentation/bloc/profile_bloc.dart';
+import '../../profile/presentation/bloc/profile_state.dart';
 import 'bloc/dashboard_bloc.dart';
 import 'bloc/dashboard_state.dart';
 import 'bloc/dashboard_event.dart';
@@ -20,10 +22,19 @@ class DashboardTabWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      builder: (context, state) {
-        if (state is DashboardInitial) {
-          context.read<DashboardBloc>().add(const LoadDashboard());
+    return BlocListener<ProfileBloc, ProfileState>(
+      listener: (context, profileState) {
+        if (profileState is ProfileLoaded) {
+          final dashboardState = context.read<DashboardBloc>().state;
+          if (dashboardState is DashboardLoaded) {
+            context.read<DashboardBloc>().add(const LoadDashboard());
+          }
+        }
+      },
+      child: BlocBuilder<DashboardBloc, DashboardState>(
+        builder: (context, state) {
+          if (state is DashboardInitial) {
+            context.read<DashboardBloc>().add(const LoadDashboard());
           return const Scaffold(
             backgroundColor: AppColors.background,
             body: Center(
