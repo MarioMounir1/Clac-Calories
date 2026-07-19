@@ -1,7 +1,6 @@
 // lib/features/calorie_tracker/data/repositories/meal_repository_impl.dart
 // Calc-Calories — Repository Implementation (network-first, Hive fallback)
 
-import 'dart:io';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
