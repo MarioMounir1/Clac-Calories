@@ -47,11 +47,24 @@ export async function getTodayMealPlan(req: Request, res: Response): Promise<voi
     const weekStart   = getWeekStart();
     const todayDow    = getTodayDayOfWeek();
 
-    const entries = await prisma.mealPlan.findMany({
+    let entries = await prisma.mealPlan.findMany({
       where: { userId, weekStart, dayOfWeek: todayDow },
       include: { foodItem: true },
       orderBy: { mealType: "asc" },
     });
+
+    // Auto-generate if no plan exists for the week
+    if (entries.length === 0) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user && user.dailyCalorieGoal) {
+        await internalGenerateMealPlan(userId, user.dailyCalorieGoal, weekStart);
+        entries = await prisma.mealPlan.findMany({
+          where: { userId, weekStart, dayOfWeek: todayDow },
+          include: { foodItem: true },
+          orderBy: { mealType: "asc" },
+        });
+      }
+    }
 
     // Sort by meal type order
     entries.sort(
@@ -107,11 +120,24 @@ export async function getWeekMealPlan(req: Request, res: Response): Promise<void
 
     const weekStart = getWeekStart();
 
-    const entries = await prisma.mealPlan.findMany({
+    let entries = await prisma.mealPlan.findMany({
       where:   { userId, weekStart },
       include: { foodItem: true },
-      orderBy: [{ dayOfWeek: "asc" }, { mealType: "asc" }],
     });
+
+    // Auto-generate if no plan exists for the week
+    if (entries.length === 0) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user && user.dailyCalorieGoal) {
+        await internalGenerateMealPlan(userId, user.dailyCalorieGoal, weekStart);
+        entries = await prisma.mealPlan.findMany({
+          where: { userId, weekStart },
+          include: { foodItem: true },
+        });
+      }
+    }
+
+    entries.sort((a, b) => (a.dayOfWeek - b.dayOfWeek) || (MEAL_TYPE_ORDER.indexOf(a.mealType) - MEAL_TYPE_ORDER.indexOf(b.mealType)));
 
     // Group by day
     const byDay: Record<number, any[]> = {};
@@ -173,6 +199,64 @@ export async function getWeekMealPlan(req: Request, res: Response): Promise<void
 
 // ── POST /api/v1/meal-plans/generate ─────────────────────────
 
+async function internalGenerateMealPlan(userId: string, targetCalories: number, weekStart: Date): Promise<number> {
+  // Delete existing plan for this week
+  await prisma.mealPlan.deleteMany({ where: { userId, weekStart } });
+
+  // Fetch food items by category for planning
+  const [breakfastItems, lunchItems, dinnerItems, snackItems] = await Promise.all([
+    prisma.foodItem.findMany({ where: { category: "breakfast", isVerified: true }, take: 20 }),
+    prisma.foodItem.findMany({ where: { category: { in: ["lunch", "protein"] }, isVerified: true }, take: 40 }),
+    prisma.foodItem.findMany({ where: { category: { in: ["dinner", "grain"]  }, isVerified: true }, take: 30 }),
+    prisma.foodItem.findMany({ where: { category: "snack", isVerified: true }, take: 20 }),
+  ]);
+
+  const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+  const planEntries: Array<{
+    userId:    string;
+    foodItemId: string;
+    weekStart: Date;
+    dayOfWeek: number;
+    mealType:  string;
+    servings:  number;
+  }> = [];
+
+  // Generate for all 7 days
+  for (let dow = 0; dow < 7; dow++) {
+    // Breakfast ~25% of calories
+    if (breakfastItems.length > 0) {
+      const item = rand(breakfastItems);
+      const servings = Math.max(1, Math.round((targetCalories * 0.25) / item.calories));
+      planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "breakfast", servings });
+    }
+
+    // Lunch ~40% of calories
+    if (lunchItems.length > 0) {
+      const item = rand(lunchItems);
+      const servings = Math.max(1, Math.round((targetCalories * 0.40) / item.calories));
+      planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "lunch", servings });
+    }
+
+    // Dinner ~25% of calories
+    if (dinnerItems.length > 0) {
+      const item = rand(dinnerItems);
+      const servings = Math.max(1, Math.round((targetCalories * 0.25) / item.calories));
+      planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "dinner", servings });
+    }
+
+    // Snack ~10% of calories (not every day — 5/7 days)
+    if (snackItems.length > 0 && dow % 2 !== 0) {
+      const item = rand(snackItems);
+      const servings = Math.max(1, Math.round((targetCalories * 0.10) / item.calories));
+      planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "snack", servings });
+    }
+  }
+
+  await prisma.mealPlan.createMany({ data: planEntries });
+  return planEntries.length;
+}
+
 export async function generateMealPlan(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.id;
@@ -182,68 +266,13 @@ export async function generateMealPlan(req: Request, res: Response): Promise<voi
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
     const weekStart = getWeekStart();
-
-    // Delete existing plan for this week
-    await prisma.mealPlan.deleteMany({ where: { userId, weekStart } });
-
-    // Fetch food items by category for planning
-    const [breakfastItems, lunchItems, dinnerItems, snackItems] = await Promise.all([
-      prisma.foodItem.findMany({ where: { category: "breakfast", isVerified: true }, take: 20 }),
-      prisma.foodItem.findMany({ where: { category: { in: ["lunch", "protein"] }, isVerified: true }, take: 40 }),
-      prisma.foodItem.findMany({ where: { category: { in: ["dinner", "grain"]  }, isVerified: true }, take: 30 }),
-      prisma.foodItem.findMany({ where: { category: "snack", isVerified: true }, take: 20 }),
-    ]);
-
-    const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
-    const targetCalories = user.dailyCalorieGoal;
-    const planEntries: Array<{
-      userId:    string;
-      foodItemId: string;
-      weekStart: Date;
-      dayOfWeek: number;
-      mealType:  string;
-      servings:  number;
-    }> = [];
-
-    // Generate for all 7 days
-    for (let dow = 0; dow < 7; dow++) {
-      // Breakfast ~25% of calories
-      if (breakfastItems.length > 0) {
-        const item = rand(breakfastItems);
-        const servings = Math.max(1, Math.round((targetCalories * 0.25) / item.calories));
-        planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "breakfast", servings });
-      }
-
-      // Lunch ~40% of calories
-      if (lunchItems.length > 0) {
-        const item = rand(lunchItems);
-        const servings = Math.max(1, Math.round((targetCalories * 0.40) / item.calories));
-        planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "lunch", servings });
-      }
-
-      // Dinner ~25% of calories
-      if (dinnerItems.length > 0) {
-        const item = rand(dinnerItems);
-        const servings = Math.max(1, Math.round((targetCalories * 0.25) / item.calories));
-        planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "dinner", servings });
-      }
-
-      // Snack ~10% of calories (not every day — 5/7 days)
-      if (snackItems.length > 0 && dow % 2 !== 0) {
-        const item = rand(snackItems);
-        const servings = Math.max(1, Math.round((targetCalories * 0.10) / item.calories));
-        planEntries.push({ userId, foodItemId: item.id, weekStart, dayOfWeek: dow, mealType: "snack", servings });
-      }
-    }
-
-    await prisma.mealPlan.createMany({ data: planEntries });
+    const entriesCount = await internalGenerateMealPlan(userId, user.dailyCalorieGoal || 2000, weekStart);
 
     res.status(201).json({
       message:    "Weekly meal plan generated successfully",
       weekStart:  weekStart.toISOString().split("T")[0],
-      entriesCount: planEntries.length,
-      targetCaloriesPerDay: targetCalories,
+      entriesCount,
+      targetCaloriesPerDay: user.dailyCalorieGoal || 2000,
     });
   } catch (error) {
     console.error("[meal-plan] generateMealPlan error:", error);
