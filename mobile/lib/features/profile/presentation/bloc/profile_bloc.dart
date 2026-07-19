@@ -86,11 +86,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       (response) async {
         final user = response['user'] as Map<String, dynamic>;
         emit(ProfileUpdateSuccess(user));
+        
         // Trigger load again to refresh UI state fully
-        final isCompleted = await repository.isOnboardingCompleted();
+        final bool isLocalCompleted = await repository.isOnboardingCompleted();
+        final bool actuallyCompleted = isLocalCompleted ||
+            (user['age'] != null && user['weightKg'] != null && user['heightCm'] != null);
+
+        if (actuallyCompleted && !isLocalCompleted) {
+          await repository.setOnboardingCompleted(true);
+        }
+
         emit(ProfileLoaded(
           user: user,
-          isOnboardingCompleted: isCompleted,
+          isOnboardingCompleted: actuallyCompleted,
         ));
       },
     );
