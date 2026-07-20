@@ -109,6 +109,7 @@ model User {
   weightLogs       WeightLog[]
   mealPlans        MealPlan[]
   aiUsageLogs      AiUsageLog[]
+  workoutSessions  WorkoutSession[]
 
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
@@ -267,4 +268,78 @@ model Store {
   isOnline            Boolean  @default(false)
   affiliateLink       String
   createdAt           DateTime @default(now())
+}
+
+// ============================================================
+//  Gym Tracker & Online Coach Feature
+// ============================================================
+
+model Exercise {
+  id              String                @id @default(uuid())
+  name            String
+  description     String?
+  muscleGroup     String
+  mediaUrl        String?               // Image or Video URL
+  mediaType       String?               // "image" or "video"
+  alternatives    ExerciseAlternative[] @relation("ExerciseToAlternatives")
+  alternativeTo   ExerciseAlternative[] @relation("AlternativeToExercise")
+  workoutExercises WorkoutExercise[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+}
+
+model ExerciseAlternative {
+  id              String   @id @default(uuid())
+  exerciseId      String
+  alternativeId   String
+  exercise        Exercise @relation("ExerciseToAlternatives", fields: [exerciseId], references: [id], onDelete: Cascade)
+  alternative     Exercise @relation("AlternativeToExercise", fields: [alternativeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([exerciseId, alternativeId])
+}
+
+model WorkoutSession {
+  id              String             @id @default(uuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  startedAt       DateTime           @default(now())
+  endedAt         DateTime?
+  notes           String?
+  exercises       WorkoutExercise[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([userId, startedAt])
+}
+
+model WorkoutExercise {
+  id              String          @id @default(uuid())
+  sessionId       String
+  session         WorkoutSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  exercise        Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  order           Int
+  sets            ExerciseSet[]
+  notes           String?
+  createdAt       DateTime        @default(now())
+
+  @@index([sessionId])
+  @@index([exerciseId])
+}
+
+model ExerciseSet {
+  id                String          @id @default(uuid())
+  workoutExerciseId String
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+  setNumber         Int
+  reps              Int?
+  weightKg          Float?
+  rpe               Int?            // Rate of Perceived Exertion (1-10)
+  durationSeconds   Int?            // For timed sets (e.g., planks)
+  isCompleted       Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+
+  @@index([workoutExerciseId])
 }
