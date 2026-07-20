@@ -23,6 +23,8 @@ import '../../premium/presentation/premium_upgrade_screen.dart';
 import '../../profile/presentation/bloc/profile_bloc.dart';
 import '../../profile/presentation/bloc/profile_state.dart';
 import '../data/models/workout_models.dart';
+import 'bloc/workout_bloc.dart';
+import 'bloc/workout_event.dart';
 
 // ── State Machine ─────────────────────────────────────────────
 enum WorkoutHubState { unconfigured, loading, ready, activeWorkout }
@@ -216,6 +218,9 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final log = _currentSession != null
         ? WorkoutLog.fromSession(_currentSession!)
         : WorkoutLog.defaultPushDay();
+
+    context.read<WorkoutBloc>().add(StartWorkoutSession(log.exerciseName));
+
     setState(() {
       _activeLog = log;
       _state     = WorkoutHubState.activeWorkout;
@@ -224,6 +229,8 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   // ── Finish Workout ─────────────────────────────────────────
   void _finishWorkout() {
+    context.read<WorkoutBloc>().add(const FinishWorkoutSession());
+
     final logged = _activeLog?.sets.where((s) => s.isLogged).length ?? 0;
     setState(() {
       _activeLog = null;
@@ -1235,11 +1242,24 @@ class _ActiveWorkoutViewState extends State<_ActiveWorkoutView> {
     }
 
     setState(() {
-      final s        = widget.log.sets[index];
+      final s = widget.log.sets[index];
+      final bool willLog = !s.isLogged;
+
+      if (willLog) {
+        context.read<WorkoutBloc>().add(
+          LogSetEvent(
+            setIndex: s.setIndex,
+            weightKg: weight,
+            reps: reps,
+            workoutExerciseId: s.id, // Replace with actual ID if available
+          ),
+        );
+      }
+
       s.loggedWeightKg = weight;
       s.loggedReps     = reps;
-      s.isLogged       = !s.isLogged;
-      s.loggedAt       = s.isLogged ? DateTime.now() : null;
+      s.isLogged       = willLog;
+      s.loggedAt       = willLog ? DateTime.now() : null;
     });
 
     HapticFeedback.lightImpact();
