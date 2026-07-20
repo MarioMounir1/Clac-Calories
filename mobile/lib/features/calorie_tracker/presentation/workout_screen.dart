@@ -257,12 +257,29 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
-    return BlocListener<ProfileBloc, ProfileState>(
-      listener: (context, profileState) {
-        if (profileState is ProfileLoaded) {
-          _loadRoutine();
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ProfileBloc, ProfileState>(
+          listener: (context, profileState) {
+            if (profileState is ProfileLoaded) {
+              _loadRoutine();
+            }
+          },
+        ),
+        BlocListener<WorkoutBloc, WorkoutState>(
+          listener: (context, workoutState) {
+            if (workoutState is WorkoutError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(workoutState.message, style: const TextStyle(color: Colors.white)),
+                  backgroundColor: _C.error,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: _C.bg,
         body: SafeArea(
