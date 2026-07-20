@@ -154,6 +154,47 @@ const restaurants = [
   { name: "Kababgy", category: "grills", rating: 4.5 },
 ];
 
+// ── Gym Exercises ──────────────────────────────────────────────────────────
+const gymExercises = [
+  { name: "Barbell Bench Press", muscleGroup: "Chest", mechanic: "Compound" },
+  { name: "Incline Dumbbell Press", muscleGroup: "Upper Chest", mechanic: "Compound" },
+  { name: "Dumbbell Bench Press", muscleGroup: "Chest", mechanic: "Compound" },
+  { name: "Cable Flyes", muscleGroup: "Chest", mechanic: "Isolation" },
+  { name: "Push-Ups", muscleGroup: "Chest", mechanic: "Compound" },
+  { name: "Dips", muscleGroup: "Lower Chest", mechanic: "Compound" },
+  { name: "Pull-Ups", muscleGroup: "Lats", mechanic: "Compound" },
+  { name: "Weighted Pull-Ups", muscleGroup: "Back", mechanic: "Compound" },
+  { name: "Barbell Row", muscleGroup: "Mid Back", mechanic: "Compound" },
+  { name: "Dumbbell Row", muscleGroup: "Back", mechanic: "Compound" },
+  { name: "Cable Row", muscleGroup: "Mid Back", mechanic: "Compound" },
+  { name: "Lat Pulldown", muscleGroup: "Lats", mechanic: "Compound" },
+  { name: "Deadlift", muscleGroup: "Posterior Chain", mechanic: "Compound" },
+  { name: "Overhead Press", muscleGroup: "Front Delts", mechanic: "Compound" },
+  { name: "Arnold Press", muscleGroup: "Shoulders", mechanic: "Compound" },
+  { name: "Cable Lateral Raises", muscleGroup: "Side Delts", mechanic: "Isolation" },
+  { name: "Face Pulls", muscleGroup: "Rear Delts", mechanic: "Isolation" },
+  { name: "Rear Delt Flyes", muscleGroup: "Rear Delts", mechanic: "Isolation" },
+  { name: "Upright Row", muscleGroup: "Traps", mechanic: "Compound" },
+  { name: "Barbell Curl", muscleGroup: "Biceps", mechanic: "Isolation" },
+  { name: "Incline Dumbbell Curl", muscleGroup: "Biceps", mechanic: "Isolation" },
+  { name: "Hammer Curl", muscleGroup: "Brachialis", mechanic: "Isolation" },
+  { name: "Cable Curl", muscleGroup: "Biceps", mechanic: "Isolation" },
+  { name: "Tricep Pushdown", muscleGroup: "Triceps", mechanic: "Isolation" },
+  { name: "Skull Crushers", muscleGroup: "Triceps", mechanic: "Isolation" },
+  { name: "Close-Grip Bench", muscleGroup: "Triceps", mechanic: "Compound" },
+  { name: "Back Squat", muscleGroup: "Quads", mechanic: "Compound" },
+  { name: "Front Squat", muscleGroup: "Quads", mechanic: "Compound" },
+  { name: "Hack Squats", muscleGroup: "Quads", mechanic: "Compound" },
+  { name: "Goblet Squat", muscleGroup: "Quads", mechanic: "Compound" },
+  { name: "Leg Press", muscleGroup: "Quads", mechanic: "Compound" },
+  { name: "Lunges", muscleGroup: "Glutes", mechanic: "Compound" },
+  { name: "Romanian Deadlifts", muscleGroup: "Hamstrings", mechanic: "Compound" },
+  { name: "Leg Curl", muscleGroup: "Hamstrings", mechanic: "Isolation" },
+  { name: "Standing Calf Raises", muscleGroup: "Calves", mechanic: "Isolation" },
+  { name: "Seated Calf Raises", muscleGroup: "Calves", mechanic: "Isolation" },
+  { name: "Cable Crunch", muscleGroup: "Core", mechanic: "Isolation" },
+];
+
 async function main() {
   console.log("🌱  Seeding The Teneen database...\n");
 
@@ -197,6 +238,29 @@ async function main() {
     count++;
   }
   console.log(`   ✅  ${count} food items seeded`);
+
+  // ── Seed Gym Exercises ────────────────────────────────────────────────────
+  console.log("\n🏋️   Seeding Gym Exercises...");
+  let exCount = 0;
+  for (const ex of gymExercises) {
+    await prisma.exercise.upsert({
+      where:  { id: `seed-ex-${ex.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}` },
+      update: {
+        name: ex.name,
+        muscleGroup: ex.muscleGroup,
+        mechanic: ex.mechanic,
+      },
+      create: {
+        id: `seed-ex-${ex.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}`,
+        name: ex.name,
+        muscleGroup: ex.muscleGroup,
+        mechanic: ex.mechanic,
+        isCustom: false,
+      },
+    });
+    exCount++;
+  }
+  console.log(`   ✅  ${exCount} exercises seeded`);
 
   console.log("\n🎉  Database seeded successfully!");
 }
