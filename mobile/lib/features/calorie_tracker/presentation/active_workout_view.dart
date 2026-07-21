@@ -295,6 +295,12 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                   : 'Last week: ${log.lastWeekTopPerformance}',
               style: GoogleFonts.inter(fontSize: 11, color: _C.cyan, fontWeight: FontWeight.w600),
             ),
+          ] else ...[
+            const SizedBox(height: 4),
+            Text(
+              widget.isArabic ? 'الجلسة الأولى' : 'First Session',
+              style: GoogleFonts.inter(fontSize: 11, color: _C.textMut, fontWeight: FontWeight.w500),
+            ),
           ],
           const SizedBox(height: 22),
 
@@ -378,7 +384,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: locked ? _C.textMut : _C.textPri),
             decoration: InputDecoration(
-              hintText: s.targetWeightKg?.toStringAsFixed(0) ?? '0',
+              hintText: s.targetWeightKg?.toStringAsFixed(0) ?? '—',
               hintStyle: GoogleFonts.inter(color: _C.textMut.withOpacity(0.5), fontSize: 13),
               contentPadding: EdgeInsets.zero,
               filled: true,
@@ -412,7 +418,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: locked ? _C.textMut : _C.textPri),
             decoration: InputDecoration(
-              hintText: s.targetReps?.toString() ?? '0',
+              hintText: s.targetReps?.toString() ?? '—',
               hintStyle: GoogleFonts.inter(color: _C.textMut.withOpacity(0.5), fontSize: 13),
               contentPadding: EdgeInsets.zero,
               filled: true,

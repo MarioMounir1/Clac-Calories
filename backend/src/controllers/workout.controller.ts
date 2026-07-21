@@ -45,13 +45,13 @@ const SetupSchema = z.object({
 const StartSessionSchema = z.object({ 
   name: z.string().min(1),
   exercises: z.array(z.object({
-    id: z.string().optional(), // Exercise DB id
+    id: z.string().nullish(), // Exercise DB id
     name: z.string(),
     targetSets: z.number().int(),
-    muscleGroup: z.string().optional(),
-    lastWeekWeight: z.number().optional(),
-    lastWeekReps: z.number().optional()
-  })).optional()
+    muscleGroup: z.string().nullish(),
+    lastWeekWeight: z.number().nullish(),
+    lastWeekReps: z.number().nullish()
+  })).nullish()
 });
 const AddExerciseSchema = z.object({ sessionId: z.string(), exerciseId: z.string(), order: z.number().int(), notes: z.string().optional() });
 const LogSetSchema = z.object({ workoutExerciseId: z.string(), setNumber: z.number().int(), reps: z.number().int().optional(), weightKg: z.number().optional(), rpe: z.number().optional() });
@@ -98,8 +98,47 @@ const ROUTINE_CATALOGUE: Record<string, { description: string; days: string[] }>
   arnold_split:{ description: "Arnold's 6-day blueprint — antagonist supersets",         days: ["Chest + Back", "Shoulders + Arms", "Legs", "Chest + Back", "Shoulders + Arms", "Legs", "Rest"] },
 };
 
+// ── Fetch user's actual previous performance from the DB ────
+async function getLastWeekPerformance(userId: string, exerciseId: string): Promise<{ weight: number; reps: number } | null> {
+  const lastWorkoutExercise = await prisma.workoutExercise.findFirst({
+    where: {
+      exerciseId,
+      session: {
+        userId,
+        endedAt: { not: null }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+    include: {
+      sets: {
+        where: {
+          isCompleted: true,
+          weightKg: { not: null },
+          reps: { not: null }
+        },
+        orderBy: [
+          { weightKg: 'desc' },
+          { reps: 'desc' }
+        ],
+        take: 1
+      }
+    }
+  });
+
+  if (lastWorkoutExercise && lastWorkoutExercise.sets.length > 0) {
+    const topSet = lastWorkoutExercise.sets[0];
+    return {
+      weight: topSet.weightKg!,
+      reps: topSet.reps!
+    };
+  }
+  return null;
+}
+
 // ── Build currentSession from today's weekday + routine ────
-async function buildCurrentSession(splitType: string, splitName: string): Promise<CurrentSession> {
+async function buildCurrentSession(userId: string, splitType: string, splitName: string): Promise<CurrentSession> {
   const meta = ROUTINE_CATALOGUE[splitType];
   const days = meta?.days ?? [];
 
@@ -113,17 +152,32 @@ async function buildCurrentSession(splitType: string, splitName: string): Promis
     where: { name: { in: baseExercises.map(e => e.name) } }
   });
 
-  const exercises = baseExercises.map(ex => {
+  const exercises = await Promise.all(baseExercises.map(async (ex) => {
     const dbEx = dbExercises.find(d => d.name === ex.name);
-    return { ...ex, id: dbEx?.id };
-  });
+    if (!dbEx) {
+      return {
+        ...ex,
+        id: undefined,
+        lastWeekWeight: undefined,
+        lastWeekReps: undefined
+      };
+    }
+
+    const lastPerf = await getLastWeekPerformance(userId, dbEx.id);
+    return {
+      ...ex,
+      id: dbEx.id,
+      lastWeekWeight: lastPerf ? lastPerf.weight : null,
+      lastWeekReps: lastPerf ? lastPerf.reps : null,
+    };
+  }));
 
   const first = exercises[0];
-  const topHistoricalSet = first
+  const topHistoricalSet = (first && first.lastWeekWeight && first.lastWeekReps)
     ? {
         exerciseName: first.name,
-        weight: first.lastWeekWeight ?? 0,
-        reps: first.lastWeekReps ?? 0,
+        weight: first.lastWeekWeight,
+        reps: first.lastWeekReps,
         progressionDelta: "+2.5 kg",
       }
     : null;
@@ -158,7 +212,7 @@ export async function setupWorkoutRoutine(req: Request, res: Response): Promise<
 
     console.log(`✅ [Workout] Routine setup by user ${userId}: ${splitName} (${daysPerWeek}d/${splitType})`);
 
-    const currentSession = await buildCurrentSession(splitType, splitName);
+    const currentSession = await buildCurrentSession(userId, splitType, splitName);
 
     res.status(200).json({
       success: true,
@@ -219,7 +273,7 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
     }
 
     const meta = ROUTINE_CATALOGUE[splitType];
-    const currentSession = await buildCurrentSession(splitType, splitName);
+    const currentSession = await buildCurrentSession(userId, splitType, splitName);
 
     res.status(200).json({
       success: true,
