@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../profile/presentation/bloc/profile_bloc.dart';
 import '../../profile/presentation/bloc/profile_event.dart';
@@ -52,7 +53,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No active RevenueCat subscription package loaded. Please check offerings setup.'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -78,7 +79,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Welcome to Aura Premium!'),
-                backgroundColor: Color(0xFF10B981),
+                backgroundColor: AppColors.success,
                 duration: Duration(seconds: 2),
               ),
             );
@@ -92,7 +93,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Purchase was not completed or entitlement is not active.'),
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.warning,
             ),
           );
         }
@@ -102,7 +103,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Subscription failed: ${e.toString()}'),
-            backgroundColor: const Color(0xFFF44336),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -117,19 +118,18 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
   Widget build(BuildContext context) {
     final package = _offerings?.current?.monthly;
     final mediaQuery = MediaQuery.of(context);
-    final displayPrice = package?.storeProduct.priceString ?? '\$1.00';
 
     return Container(
       constraints: BoxConstraints(
         maxHeight: mediaQuery.size.height * 0.90,
       ),
       decoration: const BoxDecoration(
-        color: Color(0xFF0F172A), // Dark slate theme
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black54,
-            blurRadius: 25,
+            color: Colors.black87,
+            blurRadius: 30,
             spreadRadius: 5,
           ),
         ],
@@ -139,24 +139,24 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 14),
-            // Top Drag Pill
+            const SizedBox(height: 12),
+            // Top Drag Handle
             Container(
               width: 44,
-              height: 5,
+              height: 4,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2.5),
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 6),
-            // Close Button Bar
+            const SizedBox(height: 4),
+            // Close Button
             Align(
               alignment: Alignment.centerRight,
               child: Padding(
                 padding: const EdgeInsets.only(right: 12.0),
                 child: IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 24),
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 24),
                   onPressed: () => Navigator.pop(context, false),
                 ),
               ),
@@ -166,28 +166,21 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   children: [
-                    // Premium Glowing Crown Badge
+                    // Premium Icon Badge
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 76,
+                      height: 76,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFFF59E0B).withOpacity(0.25),
-                            const Color(0xFF10B981).withOpacity(0.15),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: const Color(0xFFFBBF24).withOpacity(0.12),
                         border: Border.all(
-                          color: const Color(0xFFF59E0B).withOpacity(0.6),
+                          color: const Color(0xFFFBBF24).withOpacity(0.5),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFF59E0B).withOpacity(0.25),
-                            blurRadius: 20,
+                            color: const Color(0xFFFBBF24).withOpacity(0.2),
+                            blurRadius: 18,
                             spreadRadius: 2,
                           ),
                         ],
@@ -195,92 +188,93 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                       child: const Center(
                         child: Icon(
                           Icons.workspace_premium_rounded,
-                          size: 44,
+                          size: 42,
                           color: Color(0xFFFBBF24),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     Text(
                       'Unlock Aura Premium',
                       style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+                        color: AppColors.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.3,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      'Get full access to smart nutrition AI, progressive analytics & ad-free workouts.',
+                      'Get unlimited AI nutrition analysis, progressive workout tracking & an ad-free experience.',
                       style: GoogleFonts.inter(
-                        color: const Color(0xFF94A3B8),
+                        color: AppColors.textSecondary,
                         fontSize: 14,
-                        height: 1.45,
+                        height: 1.4,
                       ),
                       textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 28),
-                    // Glass Feature List
-                    _buildFeatureCard(
-                      icon: Icons.auto_awesome_rounded,
-                      iconColor: const Color(0xFF10B981), // Emerald
-                      title: 'Smart AI Meal Scanner',
-                      subtitle: 'Offline, instant & 100% private meal logging.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFeatureCard(
-                      icon: Icons.fitness_center_rounded,
-                      title: 'Pro Workout Tracker',
-                      iconColor: const Color(0xFF06B6D4), // Cyan
-                      subtitle: 'Live session analytics & progressive overload.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFeatureCard(
-                      icon: Icons.repeat_rounded,
-                      title: 'Unlimited Custom Splits',
-                      iconColor: const Color(0xFF8B5CF6), // Purple
-                      subtitle: 'Design tailored workout routines with zero caps.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFeatureCard(
-                      icon: Icons.block_rounded,
-                      title: '100% Ad-Free Experience',
-                      iconColor: const Color(0xFFF59E0B), // Amber
-                      subtitle: 'No banners, popups or interruptions.',
                     ),
                     const SizedBox(height: 24),
-                    // Price Card
+                    // Features Section
+                    _buildFeatureItem(
+                      icon: Icons.auto_awesome_rounded,
+                      iconColor: AppColors.primary,
+                      title: 'Smart AI Meal Scanner',
+                      subtitle: 'Offline, private and instant meal analysis.',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      icon: Icons.fitness_center_rounded,
+                      iconColor: const Color(0xFF2196F3),
+                      title: 'Pro Workout Tracker',
+                      subtitle: 'Live session tracking with progressive overload analytics.',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      icon: Icons.repeat_rounded,
+                      iconColor: const Color(0xFF9C27B0),
+                      title: 'Unlimited Training Splits',
+                      subtitle: 'Custom routine builder with zero caps.',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFeatureItem(
+                      icon: Icons.block_rounded,
+                      iconColor: const Color(0xFFFBBF24),
+                      title: '100% Ad-Free Experience',
+                      subtitle: 'Focus entirely on your health without interruptions.',
+                    ),
+                    const SizedBox(height: 24),
+                    // Pricing Box
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(18),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B).withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF10B981).withOpacity(0.4),
+                          color: const Color(0xFFFBBF24).withOpacity(0.4),
                           width: 1.5,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withOpacity(0.08),
-                            blurRadius: 15,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.surfaceVariant.withOpacity(0.8),
+                            AppColors.surface.withOpacity(0.9),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withOpacity(0.15),
+                              color: const Color(0xFFFBBF24).withOpacity(0.12),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
-                              Icons.verified_rounded,
-                              color: Color(0xFF10B981),
+                              Icons.stars_rounded,
+                              color: Color(0xFFFBBF24),
                               size: 24,
                             ),
                           ),
@@ -292,16 +286,16 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                                 Text(
                                   'Monthly Membership',
                                   style: GoogleFonts.inter(
-                                    color: Colors.white,
+                                    color: AppColors.textPrimary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Cancel anytime in store settings',
+                                  'Cancel anytime, no commitment',
                                   style: GoogleFonts.inter(
-                                    color: const Color(0xFF94A3B8),
+                                    color: AppColors.textSecondary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -314,15 +308,15 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                               Text(
                                 '\$1.00',
                                 style: GoogleFonts.inter(
-                                  color: const Color(0xFF10B981),
-                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 22,
                                 ),
                               ),
                               Text(
                                 '/month',
                                 style: GoogleFonts.inter(
-                                  color: const Color(0xFF94A3B8),
+                                  color: AppColors.textSecondary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -333,68 +327,52 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    // Action Subscribe Button
+                    // Subscribe Action Button
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 54,
                       child: _loadingOfferings
                           ? const Center(
                               child: CircularProgressIndicator(
-                                color: Color(0xFF10B981),
+                                color: Color(0xFFFBBF24),
                               ),
                             )
-                          : Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                          : ElevatedButton(
+                              onPressed: _isUpgrading
+                                  ? null
+                                  : () => _handleSubscribe(package),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFBBF24),
+                                foregroundColor: Colors.black,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF10B981).withOpacity(0.35),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ],
                               ),
-                              child: ElevatedButton(
-                                onPressed: _isUpgrading
-                                    ? null
-                                    : () => _handleSubscribe(package),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                ),
-                                child: _isUpgrading
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(
-                                        'Join Premium — \$1.00/mo',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                              child: _isUpgrading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.black87,
                                       ),
-                              ),
+                                    )
+                                  : Text(
+                                      'Join Premium — \$1.00/mo',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
                             ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'Auto-renews monthly. Manage or cancel anytime.',
                       style: GoogleFonts.inter(
-                        color: const Color(0xFF64748B),
+                        color: AppColors.textMuted,
                         fontSize: 12,
                       ),
                       textAlign: TextAlign.center,
@@ -410,7 +388,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
     );
   }
 
-  Widget _buildFeatureCard({
+  Widget _buildFeatureItem({
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -419,11 +397,9 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withOpacity(0.4),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.06),
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -443,7 +419,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                 Text(
                   title,
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -452,7 +428,7 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
                 Text(
                   subtitle,
                   style: GoogleFonts.inter(
-                    color: const Color(0xFF94A3B8),
+                    color: AppColors.textSecondary,
                     fontSize: 12.5,
                     height: 1.3,
                   ),
