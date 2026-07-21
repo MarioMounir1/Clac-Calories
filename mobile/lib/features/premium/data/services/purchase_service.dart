@@ -106,33 +106,21 @@ class PurchaseService {
       print('ℹ️ [PurchaseService] simulating local 1-second purchase in Test Mode...');
       await Future.delayed(const Duration(seconds: 1));
       print('✅ Successful \$1.00 test purchase logged!');
-      
-      try {
-        final dio = ApiClient().dio;
-        await dio.post('/users/me/upgrade');
-        print('✅ Backend updated successfully!');
-      } catch (e) {
-        print('⚠️ Failed to notify backend: $e');
-        try {
-          final dio = ApiClient().dio;
-          await dio.post('/users/subscribe');
-        } catch (_) {}
-      }
-      
-      _premiumStreamController.add(true);
       return true;
     }
 
     try {
       final purchaseResult = await Purchases.purchasePackage(package);
       final isNowPremium = purchaseResult.customerInfo.entitlements.all['premium']?.isActive ?? false;
-      _premiumStreamController.add(isNowPremium);
       return isNowPremium;
     } catch (e) {
       print('❌ [RevenueCat] purchase error: $e');
       rethrow;
     }
   }
+
+  /// Purchase a package (alias to match verification requirements)
+  Future<bool> purchasePackage(Package package) => purchaseSubPackage(package);
 
   /// Restore purchases (useful for Apple App Store/Google Play Store reviews)
   Future<bool> restorePurchases() async {
