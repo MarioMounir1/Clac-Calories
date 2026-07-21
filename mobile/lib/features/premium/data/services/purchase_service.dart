@@ -112,43 +112,20 @@ class PurchaseService {
     }
   }
 
-  /// Present the built-in RevenueCat UI Paywall modal sheet.
+  /// Present the custom Flutter Paywall Screen.
   /// If the purchase is successful, syncs to backend and refreshes profile.
   Future<bool> presentPaywall(BuildContext context) async {
-    try {
-      await RevenueCatUI.presentPaywall(
-        displayCloseButton: true,
+    if (context.mounted) {
+      final isNowPremium = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PremiumUpgradeScreen(),
+          fullscreenDialog: true,
+        ),
       );
-      final isNowPremium = await isPremium();
-      _premiumStreamController.add(isNowPremium);
-      
-      if (isNowPremium) {
-        try {
-          final dio = ApiClient().dio;
-          await dio.post('/users/me/upgrade');
-          if (context.mounted) {
-            context.read<ProfileBloc>().add(LoadProfile());
-          }
-        } catch (backendError) {
-          print('❌ [RevenueCat] Failed to sync status with backend: $backendError');
-        }
-      }
-      return isNowPremium;
-    } catch (e) {
-      print('❌ [RevenueCatUI] presentPaywall error: $e - Fallback to PremiumUpgradeScreen');
-      
-      if (context.mounted) {
-        final isNowPremium = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PremiumUpgradeScreen(),
-            fullscreenDialog: true,
-          ),
-        );
-        return isNowPremium ?? false;
-      }
-      return false;
+      return isNowPremium ?? false;
     }
+    return false;
   }
 
   /// For mock/fallback testing purposes
