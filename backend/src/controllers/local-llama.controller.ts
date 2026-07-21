@@ -359,7 +359,7 @@ export async function getAiUsageHandler(req: Request, res: Response): Promise<vo
     });
 
     const isPremium = req.user?.isPremium ?? false;
-    const limit = isPremium ? 7 : 2;
+    const limit = isPremium ? 9999 : 2;
 
     res.status(200).json({
       success: true,
