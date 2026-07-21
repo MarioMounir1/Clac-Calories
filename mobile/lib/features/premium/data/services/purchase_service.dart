@@ -25,6 +25,7 @@ class PurchaseService {
   static const _appleApiKey  = String.fromEnvironment('REVENUECAT_APPLE_KEY', defaultValue: 'test_WduHLUbxvLMORiUZWfuZsXzkcpV');
 
   final _premiumStreamController = StreamController<bool>.broadcast();
+  bool? _currentMockStatus;
 
   /// Stream to listen to real-time subscription status changes (isPremium)
   Stream<bool> get premiumStream => _premiumStreamController.stream;
@@ -177,6 +178,9 @@ class PurchaseService {
 
   /// For mock/fallback testing purposes
   void setMockPremiumStatus(bool isPremium) {
-    _premiumStreamController.add(isPremium);
+    if (_currentMockStatus != isPremium) {
+      _currentMockStatus = isPremium;
+      _premiumStreamController.add(isPremium);
+    }
   }
 }
