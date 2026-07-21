@@ -88,6 +88,23 @@ export async function upgradeUser(req: Request, res: Response): Promise<void> {
   }
 }
 
+export async function unsubscribeUser(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.id;
+  try {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: { isPremium: false },
+    });
+    res.json({
+      success: true,
+      data: { user: userPublicProfile(updated) },
+    });
+  } catch (err) {
+    console.error("❌ [User] unsubscribeUser error:", err);
+    res.status(500).json({ success: false, error: "Failed to remove premium membership." });
+  }
+}
+
 // ── Zod Validation Schemas ─────────────────────────────────
 
 const RegisterSchema = z.object({
