@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/models/workout_models.dart';
+import '../domain/repositories/workout_repository.dart';
 import 'bloc/workout_bloc.dart';
 import 'bloc/workout_event.dart';
 import 'bloc/workout_state.dart';
@@ -453,6 +454,37 @@ class _ExerciseCardState extends State<_ExerciseCard> {
     HapticFeedback.lightImpact();
   }
 
+  Future<void> _showSwapAlternativesSheet(BuildContext context, WorkoutLog log) async {
+    final workoutExerciseId = log.sets.isNotEmpty ? log.sets.first.id : null;
+    if (workoutExerciseId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.isArabic ? 'لا يمكن تبديل هذا التمرين حالياً' : 'Cannot swap this exercise right now.',
+              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+          backgroundColor: _C.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return _AlternativesBottomSheet(
+          log: log,
+          workoutExerciseId: workoutExerciseId,
+          availableExercises: context.read<WorkoutBloc>().state is WorkoutSessionActive
+              ? (context.read<WorkoutBloc>().state as WorkoutSessionActive).availableExercises
+              : null,
+          isArabic: widget.isArabic,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final log = widget.log;
@@ -466,10 +498,24 @@ class _ExerciseCardState extends State<_ExerciseCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  log.exerciseName,
-                  style: GoogleFonts.inter(
-                      fontSize: 22, fontWeight: FontWeight.w900, color: _C.textPri),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        log.exerciseName,
+                        style: GoogleFonts.inter(
+                            fontSize: 22, fontWeight: FontWeight.w900, color: _C.textPri),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.swap_horiz_rounded, color: _C.cyan, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: widget.isArabic ? 'استبدال التمرين' : 'Swap Exercise',
+                      onPressed: () => _showSwapAlternativesSheet(context, log),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                 ),
               ),
               Container(
@@ -749,6 +795,251 @@ class _AddExerciseSheet extends StatelessWidget {
                       },
                     ),
                   ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Alternatives Bottom Sheet (Subtle swaps helper)
+// ═══════════════════════════════════════════════════════════════
+
+class _AlternativesBottomSheet extends StatefulWidget {
+  final WorkoutLog log;
+  final String workoutExerciseId;
+  final List<Exercise>? availableExercises;
+  final bool isArabic;
+
+  const _AlternativesBottomSheet({
+    required this.log,
+    required this.workoutExerciseId,
+    required this.availableExercises,
+    required this.isArabic,
+  });
+
+  @override
+  State<_AlternativesBottomSheet> createState() => _AlternativesBottomSheetState();
+}
+
+class _AlternativesBottomSheetState extends State<_AlternativesBottomSheet> {
+  List<Exercise> _alternatives = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAlternatives();
+  }
+
+  Future<void> _fetchAlternatives() async {
+    try {
+      final available = widget.availableExercises;
+      if (available == null) {
+        setState(() {
+          _error = widget.isArabic ? 'تأكد من تحميل قائمة التمارين أولاً' : 'Exercises catalog not loaded.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Find the ID of the current exercise log
+      final template = available.firstWhere(
+        (e) => e.name.toLowerCase() == widget.log.exerciseName.toLowerCase(),
+        orElse: () => Exercise(id: '', name: widget.log.exerciseName, muscleGroup: widget.log.muscleGroup),
+      );
+
+      if (template.id.isEmpty) {
+        setState(() {
+          _error = widget.isArabic ? 'لم يتم العثور على التمرين في الكتالوج' : 'Original exercise not found in catalog.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final repo = context.read<WorkoutRepository>();
+      final data = await repo.getAlternatives(template.id);
+      final list = data.map((e) => Exercise.fromJson(e)).toList();
+
+      if (mounted) {
+        setState(() {
+          _alternatives = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _C.card,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: _C.border, width: 1.5)),
+      ),
+      padding: const EdgeInsets.only(top: 14, bottom: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: _C.borderMid,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Header Title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.isArabic ? 'تمارين بديلة' : 'Alternative Movements',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _C.textPri,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.isArabic 
+                      ? 'استبدل "${widget.log.exerciseName}" بأحد هذه البدائل المقترحة:'
+                      : 'Swap "${widget.log.exerciseName}" with one of these alternatives:',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: _C.textSec,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Content body
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.45,
+            ),
+            child: _buildBody(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40.0),
+          child: CircularProgressIndicator(color: _C.cyan),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            _error!,
+            style: GoogleFonts.inter(color: _C.error, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (_alternatives.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40.0),
+          child: Text(
+            widget.isArabic ? 'لا توجد بدائل مقترحة لهذا التمرين' : 'No alternative exercises found.',
+            style: GoogleFonts.inter(color: _C.textSec, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      itemCount: _alternatives.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final ex = _alternatives[index];
+        return InkWell(
+          onTap: () {
+            context.read<WorkoutBloc>().add(
+              SwapWorkoutExercise(
+                workoutExerciseId: widget.workoutExerciseId,
+                newExerciseId: ex.id,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: _C.cardElev,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _C.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.swap_horiz_rounded, color: _C.cyan, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ex.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _C.textPri,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ex.muscleGroup,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: _C.textSec,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  widget.isArabic ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  color: _C.textSec,
+                  size: 20,
+                ),
               ],
             ),
           ),
