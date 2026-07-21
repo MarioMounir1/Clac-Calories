@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/ad_banner.dart';
+import '../../premium/presentation/premium_upgrade_screen.dart';
 import '../../premium/data/services/purchase_service.dart';
 import '../../profile/presentation/bloc/profile_bloc.dart';
 import '../../profile/presentation/bloc/profile_state.dart';
@@ -207,7 +208,13 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final isPremium = profileState is ProfileLoaded && profileState.isPremium;
 
     if (!isPremium) {
-      PurchaseService.instance.presentPaywall(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PremiumUpgradeScreen(),
+          fullscreenDialog: true,
+        ),
+      );
       return;
     }
 
