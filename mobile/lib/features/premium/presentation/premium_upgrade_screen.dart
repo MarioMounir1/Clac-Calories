@@ -103,170 +103,47 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     }
   }
 
-  void _showMockPaymentDialog(Package? package) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          bool processing = false;
-          final priceText = package?.storeProduct.priceString ?? '\$1.00';
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF121824),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(top: BorderSide(color: Color(0xFF222B3F), width: 1.5)),
+  Future<void> _handleSubscribe(Package? package) async {
+    setState(() => _isUpgrading = true);
+    try {
+      if (package != null) {
+        // Perform RevenueCat Purchase
+        final success = await PurchaseService.instance.purchaseSubPackage(package);
+        if (success && mounted) {
+          await _completeUpgradeBackend(); // Sync subscription to DB
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Subscription purchase was not completed.'),
+                backgroundColor: Colors.orange,
               ),
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40, height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF374151),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Confirm Subscription Payment',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Subscribe to Aura Premium for $priceText / month.',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Mock Card Field
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B2232),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF222B3F)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.credit_card_rounded, color: Color(0xFF00BCD4), size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            '•••• •••• •••• 4242',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'MOCK',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF10B981),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: processing ? null : () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFF222B3F)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text('Cancel', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: processing ? null : () async {
-                            setModalState(() => processing = true);
-                            try {
-                              if (package != null) {
-                                // Perform RevenueCat Purchase
-                                final success = await PurchaseService.instance.purchaseSubPackage(package);
-                                if (success && mounted) {
-                                  Navigator.pop(context); // Close sheet
-                                  _completeUpgradeBackend(); // Sync subscription to DB
-                                } else {
-                                  if (mounted) {
-                                    setModalState(() => processing = false);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Purchase not active.'), backgroundColor: Colors.orange),
-                                    );
-                                  }
-                                }
-                              } else {
-                                // Fallback mock checkout since package is null
-                                await Future.delayed(const Duration(seconds: 1));
-                                PurchaseService.instance.setMockPremiumStatus(true);
-                                if (mounted) {
-                                  Navigator.pop(context); // Close sheet
-                                  _completeUpgradeBackend(); // Sync subscription to DB
-                                }
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                setModalState(() => processing = false);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Payment Failed: $e'), backgroundColor: Colors.red),
-                                );
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981), // Green pay button
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: processing
-                            ? const SizedBox(
-                                width: 20, height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : Text('Pay $priceText', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
+            );
+          }
         }
-      ),
-    );
+      } else {
+        // Fallback mock checkout since package is null (RevenueCat not configured yet)
+        await Future.delayed(const Duration(seconds: 1));
+        PurchaseService.instance.setMockPremiumStatus(true);
+        if (mounted) {
+          await _completeUpgradeBackend();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        // Graceful error handling (no raw system dialogs)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Subscription failed: ${e.toString()}'),
+            backgroundColor: const Color(0xFFF44336),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpgrading = false);
+      }
+    }
   }
 
   @override
@@ -368,20 +245,118 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                       // Features List
                       _buildFeatureRow(
                         icon: Icons.auto_awesome,
-                        title: '7 Daily Smart Scans',
+                        title: 'Offline AI Meal Scanner',
                         subtitle: 'Instantly analyze meals with camera or gallery.',
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
                       _buildFeatureRow(
                         icon: Icons.fitness_center_rounded,
-                        title: 'Full Workout Hub',
+                        title: 'Smart Set Tracker & Progressive Overload',
                         subtitle: 'Live session tracking & advanced analytics.',
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
+                      _buildFeatureRow(
+                        icon: Icons.repeat_rounded,
+                        title: 'Unlimited Workout Splits',
+                        subtitle: 'Design and customize your ultimate routines.',
+                      ),
+                      const SizedBox(height: 18),
                       _buildFeatureRow(
                         icon: Icons.block_rounded,
-                        title: 'Ad-Free Experience',
+                        title: '100% Ad-Free',
                         subtitle: 'Focus entirely on your goals without distractions.',
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Pricing Option (ONLY ONE)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF121824).withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFFBBF24).withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF1B2232).withOpacity(0.6),
+                              const Color(0xFF121824).withOpacity(0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFBBF24).withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFBBF24).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.workspace_premium_rounded,
+                                color: Color(0xFFFBBF24),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Monthly Premium Access',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Cancel anytime, no commitment.',
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF8E929C),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  package?.storeProduct.priceString ?? '\$1.00',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.extrabold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                Text(
+                                  '/mo',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFF8E929C),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                       
                       const Spacer(),
@@ -399,7 +374,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                             : ElevatedButton(
                                 onPressed: _isUpgrading
                                     ? null
-                                    : () => _showMockPaymentDialog(package),
+                                    : () => _handleSubscribe(package),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFBBF24), // Amber primary
                                   foregroundColor: Colors.black, // Dark text
@@ -418,7 +393,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                                         ),
                                       )
                                     : Text(
-                                        'Subscribe for ${package?.storeProduct.priceString ?? "\$1.00"}',
+                                        'Subscribe Now — ${package?.storeProduct.priceString ?? "\$1.00"}/mo',
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
