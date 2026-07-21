@@ -231,7 +231,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                       const SizedBox(height: 12),
                       
                       const Text(
-                        'Get the ultimate AI-powered nutrition and fitness experience for just \$1/month.',
+                        'Get the ultimate Smart nutrition and fitness experience for just \$1/month.',
                         style: TextStyle(
                           color: Color(0xFF8E929C),
                           fontSize: 16,
@@ -245,25 +245,25 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                       // Features List
                       _buildFeatureRow(
                         icon: Icons.auto_awesome,
-                        title: 'Offline AI Meal Scanner',
-                        subtitle: 'Instantly analyze meals with camera or gallery.',
+                        title: 'Smart Meal Scanner',
+                        subtitle: '100% Offline & Private.',
                       ),
                       const SizedBox(height: 18),
                       _buildFeatureRow(
                         icon: Icons.fitness_center_rounded,
-                        title: 'Smart Set Tracker & Progressive Overload',
-                        subtitle: 'Live session tracking & advanced analytics.',
+                        title: 'Advanced Set Tracker & Progressive Overload',
+                        subtitle: 'Live session tracking & analytics.',
                       ),
                       const SizedBox(height: 18),
                       _buildFeatureRow(
                         icon: Icons.repeat_rounded,
-                        title: 'Unlimited Workout Splits',
-                        subtitle: 'Design and customize your ultimate routines.',
+                        title: 'Unlimited Custom Training Splits',
+                        subtitle: 'Design and customize your routines.',
                       ),
                       const SizedBox(height: 18),
                       _buildFeatureRow(
                         icon: Icons.block_rounded,
-                        title: '100% Ad-Free',
+                        title: '100% Ad-Free Experience',
                         subtitle: 'Focus entirely on your goals without distractions.',
                       ),
                       
@@ -338,7 +338,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  package?.storeProduct.priceString ?? '\$1.00',
+                                  '\$1.00',
                                   style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
@@ -393,7 +393,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                                         ),
                                       )
                                     : Text(
-                                        'Subscribe Now — ${package?.storeProduct.priceString ?? "\$1.00"}/mo',
+                                        'Subscribe Now — \$1/mo',
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
