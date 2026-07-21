@@ -101,6 +101,21 @@ class PurchaseService {
     }
   }
 
+  /// Check and sync customer info dynamically on launch / profile load
+  Future<bool> syncCustomerInfoOnLaunch() async {
+    if (isTestMode) return false;
+    try {
+      if (!Platform.isAndroid && !Platform.isIOS) return false;
+      final customerInfo = await Purchases.getCustomerInfo();
+      final isActive = customerInfo.entitlements.all['premium']?.isActive ?? false;
+      _premiumStreamController.add(isActive);
+      return isActive;
+    } catch (e) {
+      print('❌ [RevenueCat] syncCustomerInfoOnLaunch error: $e');
+      return false;
+    }
+  }
+
   /// Purchase a package and return the updated premium entitlement status
   Future<bool> purchaseSubPackage(Package package) async {
     if (isTestMode) {
@@ -111,9 +126,17 @@ class PurchaseService {
     }
 
     try {
-      final purchaseResult = await Purchases.purchasePackage(package);
-      final isNowPremium = purchaseResult.customerInfo.entitlements.all['premium']?.isActive ?? false;
+      final customerInfo = await Purchases.purchasePackage(package);
+      final isNowPremium = customerInfo.entitlements.all['premium']?.isActive ?? false;
       return isNowPremium;
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
+        print('ℹ️ [RevenueCat] User cancelled purchase.');
+        return false;
+      }
+      print('❌ [RevenueCat] purchase error: ${e.message}');
+      rethrow;
     } catch (e) {
       print('❌ [RevenueCat] purchase error: $e');
       rethrow;
