@@ -18,7 +18,7 @@ class PurchaseService {
   PurchaseService._();
   static final PurchaseService instance = PurchaseService._();
 
-  static const bool isTestMode = true; // Set to true for mock purchases during testing, false for production
+  static const bool isTestMode = false; // Set to false to enforce real RevenueCat purchases and entitlement checks
 
   // API Keys loaded via String.fromEnvironment (or falling back to the test credentials)
   static const _googleApiKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY', defaultValue: 'test_WduHLUbxvLMORiUZWfuZsXzkcpV');
@@ -45,11 +45,7 @@ class PurchaseService {
 
       await Purchases.configure(configuration);
 
-      if (isTestMode) {
-        // Do not listen to real entitlements or emit them in test mode
-        _premiumStreamController.add(false);
-        return;
-      }
+
 
       // Listen for subscription updates in real-time
       Purchases.addCustomerInfoUpdateListener((customerInfo) {
@@ -67,10 +63,8 @@ class PurchaseService {
 
   /// Log in the user to sync entitlements across devices
   Future<void> logIn(String appUserId) async {
-    if (isTestMode) {
-      return; // Do not fetch or emit real customer info in test mode
-    }
     try {
+      if (!Platform.isAndroid && !Platform.isIOS) return;
       await Purchases.logIn(appUserId);
       final currentInfo = await Purchases.getCustomerInfo();
       _premiumStreamController.add(currentInfo.entitlements.all['premium']?.isActive ?? false);
@@ -81,10 +75,8 @@ class PurchaseService {
 
   /// Check current entitlement status synchronously/on-demand
   Future<bool> isPremium() async {
-    if (isTestMode) {
-      return false; // Let database status control it in test mode
-    }
     try {
+      if (!Platform.isAndroid && !Platform.isIOS) return false;
       final customerInfo = await Purchases.getCustomerInfo();
       return customerInfo.entitlements.all['premium']?.isActive ?? false;
     } catch (e) {
@@ -120,13 +112,6 @@ class PurchaseService {
 
   /// Purchase a package and return the updated premium entitlement status
   Future<bool> purchaseSubPackage(Package package) async {
-    if (isTestMode) {
-      print('ℹ️ [PurchaseService] simulating local 1-second purchase in Test Mode...');
-      await Future.delayed(const Duration(seconds: 1));
-      print('✅ Successful \$1.00 test purchase logged!');
-      return true;
-    }
-
     try {
       final purchaseResult = await Purchases.purchasePackage(package);
       final isNowPremium = purchaseResult.customerInfo.entitlements.all['premium']?.isActive ?? false;
