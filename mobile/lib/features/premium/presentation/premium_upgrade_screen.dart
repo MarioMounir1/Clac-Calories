@@ -1,5 +1,6 @@
 // lib/features/premium/presentation/premium_upgrade_screen.dart
 
+import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -44,7 +45,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     super.dispose();
   }
 
-  Future<void> _upgradeToPremium() async {
+  Future<void> _completeUpgradeBackend() async {
     setState(() => _isUpgrading = true);
     
     try {
@@ -75,6 +76,145 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
     } finally {
       if (mounted) setState(() => _isUpgrading = false);
     }
+  }
+
+  void _showMockPaymentDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          bool processing = false;
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF121824),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(top: BorderSide(color: Color(0xFF222B3F), width: 1.5)),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF374151),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Confirm Subscription Payment',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'You are subscribing to Aura Premium for \$1.00 / month. Enter mock billing info to proceed.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF9CA3AF),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Mock Card Field
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B2232),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF222B3F)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.credit_card_rounded, color: Color(0xFF00BCD4), size: 22),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            '•••• •••• •••• 4242',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'MOCK',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF10B981),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: processing ? null : () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFF222B3F)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: Text('Cancel', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: processing ? null : () async {
+                            setModalState(() => processing = true);
+                            // Simulate payment processing time
+                            await Future.delayed(const Duration(seconds: 2));
+                            if (mounted) {
+                              Navigator.pop(context); // Close sheet
+                              _completeUpgradeBackend(); // Call backend to set premium flag
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981), // Green pay button
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: processing
+                            ? const SizedBox(
+                                width: 20, height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text('Pay \$1.00', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      ),
+    );
   }
 
   @override
@@ -197,7 +337,7 @@ class _PremiumUpgradeScreenState extends State<PremiumUpgradeScreen>
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: _isUpgrading ? null : _upgradeToPremium,
+                          onPressed: _isUpgrading ? null : _showMockPaymentDialog,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFBBF24), // Amber primary
                             foregroundColor: Colors.black, // Dark text
