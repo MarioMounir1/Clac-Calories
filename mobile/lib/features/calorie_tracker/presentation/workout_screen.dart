@@ -208,13 +208,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     final isPremium = profileState is ProfileLoaded && profileState.isPremium;
 
     if (!isPremium) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PremiumUpgradeScreen(),
-          fullscreenDialog: true,
-        ),
-      );
+      PurchaseService.instance.presentPaywall(context);
       return;
     }
 
