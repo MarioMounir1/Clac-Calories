@@ -10,14 +10,15 @@ import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../profile/presentation/bloc/profile_bloc.dart';
 import '../../../profile/presentation/bloc/profile_event.dart';
+import '../../presentation/premium_upgrade_screen.dart';
 
 class PurchaseService {
   PurchaseService._();
   static final PurchaseService instance = PurchaseService._();
 
   // API Keys loaded via String.fromEnvironment (or falling back to the test credentials)
-  static const _googleApiKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY', defaultValue: 'test_WduHLUbxvLM0rIUZwFuZsXzkcpV');
-  static const _appleApiKey  = String.fromEnvironment('REVENUECAT_APPLE_KEY', defaultValue: 'test_WduHLUbxvLM0rIUZwFuZsXzkcpV');
+  static const _googleApiKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY', defaultValue: 'test_WduHLUbxvLMORiUZWfuZsXzkcpV');
+  static const _appleApiKey  = String.fromEnvironment('REVENUECAT_APPLE_KEY', defaultValue: 'test_WduHLUbxvLMORiUZWfuZsXzkcpV');
 
   final _premiumStreamController = StreamController<bool>.broadcast();
 
@@ -134,8 +135,24 @@ class PurchaseService {
       }
       return isNowPremium;
     } catch (e) {
-      print('❌ [RevenueCatUI] presentPaywall error: $e');
+      print('❌ [RevenueCatUI] presentPaywall error: $e - Fallback to PremiumUpgradeScreen');
+      
+      if (context.mounted) {
+        final isNowPremium = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PremiumUpgradeScreen(),
+            fullscreenDialog: true,
+          ),
+        );
+        return isNowPremium ?? false;
+      }
       return false;
     }
+  }
+
+  /// For mock/fallback testing purposes
+  void setMockPremiumStatus(bool isPremium) {
+    _premiumStreamController.add(isPremium);
   }
 }
