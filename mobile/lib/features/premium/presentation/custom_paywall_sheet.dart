@@ -76,39 +76,30 @@ class _CustomPaywallSheetState extends State<CustomPaywallSheet> {
         }
         return;
       }
-        final dio = ApiClient().dio;
-        final response = await dio.post('/users/subscribe');
-        
-        final data = response.data;
-        final bool isBackendSuccess = response.statusCode == 200 || 
-                                      response.statusCode == 201 ||
-                                      (data != null && data['success'] == true);
 
-        if (isBackendSuccess) {
-          PurchaseService.instance.setMockPremiumStatus(true);
-          if (mounted) {
-            context.read<ProfileBloc>().add(const UpdatePremiumStatus(true));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Welcome to Aura Premium!'),
-                backgroundColor: AppColors.success,
-                duration: Duration(seconds: 2),
-              ),
-            );
-            Navigator.pop(context, true);
-          }
-        } else {
-          throw Exception('Backend failed to confirm premium subscription.');
-        }
-      } else {
+      final dio = ApiClient().dio;
+      final response = await dio.post('/users/subscribe');
+      
+      final data = response.data;
+      final bool isBackendSuccess = response.statusCode == 200 || 
+                                    response.statusCode == 201 ||
+                                    (data != null && data['success'] == true);
+
+      if (isBackendSuccess) {
+        PurchaseService.instance.setMockPremiumStatus(true);
         if (mounted) {
+          context.read<ProfileBloc>().add(const UpdatePremiumStatus(true));
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Purchase was not completed or entitlement is not active.'),
-              backgroundColor: AppColors.warning,
+              content: Text('Welcome to Aura Premium!'),
+              backgroundColor: AppColors.success,
+              duration: Duration(seconds: 2),
             ),
           );
+          Navigator.pop(context, true);
         }
+      } else {
+        throw Exception('Backend failed to confirm premium subscription.');
       }
     } catch (e) {
       if (mounted) {
