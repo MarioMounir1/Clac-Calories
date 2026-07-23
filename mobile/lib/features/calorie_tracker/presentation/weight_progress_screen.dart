@@ -166,6 +166,35 @@ class _WeightProgressScreenState extends State<WeightProgressScreen> {
               ),
               child: Text(l10n.weightNoHistory, style: const TextStyle(color: AppColors.textSecondary)),
             ),
+
+          // ── AI Weight Coach Guidance Card ──────────────────────────────
+          if (state.coachNote != null && state.coachNote!.trim().isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology_rounded, color: AppColors.accent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      state.coachNote!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 24),
 
           // ── Weight Logger Action Button ───────────────────────────────────
