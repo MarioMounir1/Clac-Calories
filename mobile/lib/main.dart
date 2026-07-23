@@ -149,54 +149,109 @@ class TeneenApp extends StatelessWidget {
             )..add(AppStarted()),
           ),
         ],
-        child: BlocBuilder<LanguageCubit, Locale>(
-          builder: (context, locale) {
-            // RTL for Arabic, LTR for English
-            final isArabic = locale.languageCode == 'ar';
+        child: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, authState) {
+            final sessionKey = authState is Authenticated
+                ? (authState.token.isNotEmpty ? authState.token : 'authed_session')
+                : 'unauthed_session';
 
-            return MaterialApp(
-              title:                   'The Teneen | التنين',
-              debugShowCheckedModeBanner: false,
-              theme:                   AppTheme.darkTheme,
-
-              // ── Localization ────────────────────────────
-              locale:                  locale,
-              supportedLocales: const [
-                Locale('en'),
-                Locale('ar'),
+            return MultiBlocProvider(
+              key: ValueKey(sessionKey),
+              providers: [
+                BlocProvider<ProfileBloc>(
+                  create: (ctx) => ProfileBloc(
+                    repository: ctx.read<ProfileRepository>(),
+                  ),
+                ),
+                BlocProvider<DashboardBloc>(
+                  create: (ctx) => DashboardBloc(
+                    repository: ctx.read<TrackerRepository>(),
+                    mealRepository: ctx.read<MealRepository>(),
+                  ),
+                ),
+                BlocProvider<CalorieTrackerBloc>(
+                  create: (ctx) => CalorieTrackerBloc(
+                    repository:     ctx.read<MealRepository>(),
+                    authRepository: ctx.read<AuthRepository>(),
+                  ),
+                ),
+                BlocProvider<FoodSearchBloc>(
+                  create: (ctx) => FoodSearchBloc(
+                    repository: ctx.read<TrackerRepository>(),
+                  ),
+                ),
+                BlocProvider<WaterBloc>(
+                  create: (ctx) => WaterBloc(
+                    repository: ctx.read<TrackerRepository>(),
+                  ),
+                ),
+                BlocProvider<WeightBloc>(
+                  create: (ctx) => WeightBloc(
+                    repository: ctx.read<TrackerRepository>(),
+                  ),
+                ),
+                BlocProvider<MealPlanBloc>(
+                  create: (ctx) => MealPlanBloc(
+                    repository: ctx.read<TrackerRepository>(),
+                  ),
+                ),
+                BlocProvider<WorkoutBloc>(
+                  create: (ctx) => WorkoutBloc(
+                    ctx.read<WorkoutRepository>(),
+                  ),
+                ),
               ],
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
+              child: BlocBuilder<LanguageCubit, Locale>(
+                builder: (context, locale) {
+                  // RTL for Arabic, LTR for English
+                  final isArabic = locale.languageCode == 'ar';
 
-              // ── RTL / LTR ───────────────────────────────
-              builder: (context, child) {
-                return Directionality(
-                  textDirection: isArabic
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
-                  child: child!,
-                );
-              },
+                  return MaterialApp(
+                    title:                   'The Teneen | التنين',
+                    debugShowCheckedModeBanner: false,
+                    theme:                   AppTheme.darkTheme,
 
-              // ── Routes ──────────────────────────────────
-              initialRoute: '/splash',
-              routes: {
-                '/splash':  (_) => const SplashScreen(),
-                '/':        (_) => const AuthWrapper(),
-                '/login':   (_) => const LoginScreen(),
-                '/history': (_) => const HistoryScreen(),
-                '/settings': (_) => const SettingsScreen(),
-                '/foods/search': (_) => const FoodSearchScreen(),
-                '/weight/progress': (_) => const WeightProgressScreen(),
-                '/meals/analyze': (_) => const AnalyzeMealScreen(),
-                '/water/progress': (_) => const WaterTrackingScreen(),
-                '/meals/ai-suggestion': (_) => const AiSuggestionScreen(),
-                '/gyms': (_) => const GymsScreen(),
-              },
+                    // ── Localization ────────────────────────────
+                    locale:                  locale,
+                    supportedLocales: const [
+                      Locale('en'),
+                      Locale('ar'),
+                    ],
+                    localizationsDelegates: const [
+                      AppLocalizations.delegate,
+                      GlobalMaterialLocalizations.delegate,
+                      GlobalWidgetsLocalizations.delegate,
+                      GlobalCupertinoLocalizations.delegate,
+                    ],
+
+                    // ── RTL / LTR ───────────────────────────────
+                    builder: (context, child) {
+                      return Directionality(
+                        textDirection: isArabic
+                            ? TextDirection.rtl
+                            : TextDirection.ltr,
+                        child: child!,
+                      );
+                    },
+
+                    // ── Routes ──────────────────────────────────
+                    initialRoute: '/splash',
+                    routes: {
+                      '/splash':  (_) => const SplashScreen(),
+                      '/':        (_) => const AuthWrapper(),
+                      '/login':   (_) => const LoginScreen(),
+                      '/history': (_) => const HistoryScreen(),
+                      '/settings': (_) => const SettingsScreen(),
+                      '/foods/search': (_) => const FoodSearchScreen(),
+                      '/weight/progress': (_) => const WeightProgressScreen(),
+                      '/meals/analyze': (_) => const AnalyzeMealScreen(),
+                      '/water/progress': (_) => const WaterTrackingScreen(),
+                      '/meals/ai-suggestion': (_) => const AiSuggestionScreen(),
+                      '/gyms': (_) => const GymsScreen(),
+                    },
+                  );
+                },
+              ),
             );
           },
         ),
@@ -212,133 +267,93 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, authState) {
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, authState) {
         if (authState is Authenticated) {
-          final sessionKey = authState.token.isNotEmpty ? authState.token : 'authed_session';
-          return MultiBlocProvider(
-            key: ValueKey(sessionKey),
-            providers: [
-              BlocProvider<ProfileBloc>(
-                create: (ctx) => ProfileBloc(
-                  repository: ctx.read<ProfileRepository>(),
-                )..add(LoadProfile()),
-              ),
-              BlocProvider<DashboardBloc>(
-                create: (ctx) => DashboardBloc(
-                  repository: ctx.read<TrackerRepository>(),
-                  mealRepository: ctx.read<MealRepository>(),
-                ),
-              ),
-              BlocProvider<CalorieTrackerBloc>(
-                create: (ctx) => CalorieTrackerBloc(
-                  repository:     ctx.read<MealRepository>(),
-                  authRepository: ctx.read<AuthRepository>(),
-                ),
-              ),
-              BlocProvider<FoodSearchBloc>(
-                create: (ctx) => FoodSearchBloc(
-                  repository: ctx.read<TrackerRepository>(),
-                ),
-              ),
-              BlocProvider<WaterBloc>(
-                create: (ctx) => WaterBloc(
-                  repository: ctx.read<TrackerRepository>(),
-                ),
-              ),
-              BlocProvider<WeightBloc>(
-                create: (ctx) => WeightBloc(
-                  repository: ctx.read<TrackerRepository>(),
-                ),
-              ),
-              BlocProvider<MealPlanBloc>(
-                create: (ctx) => MealPlanBloc(
-                  repository: ctx.read<TrackerRepository>(),
-                ),
-              ),
-              BlocProvider<WorkoutBloc>(
-                create: (ctx) => WorkoutBloc(
-                  ctx.read<WorkoutRepository>(),
-                ),
-              ),
-            ],
-            child: const AuthenticatedUserScope(),
-          );
+          // Force fresh load of profile when user becomes authenticated (login or startup)
+          context.read<ProfileBloc>().add(LoadProfile());
         }
-        if (authState is Unauthenticated || authState is AuthFailure) {
-          return const LoginScreen();
-        }
-        // Splash / loading state
-        return const Scaffold(
-          backgroundColor: AppColors.background,
-          body: Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+      },
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          if (authState is Authenticated) {
+            return BlocListener<ProfileBloc, ProfileState>(
+              listener: (context, profileState) {
+                if (profileState is ProfileFailure &&
+                    (profileState.message.contains("Authentication required") ||
+                     profileState.message.contains("Unauthorized") ||
+                     profileState.message.contains("token") ||
+                     profileState.message.contains("Session expired"))) {
+                  context.read<AuthBloc>().add(LogoutRequested());
+                }
+              },
+              child: BlocBuilder<ProfileBloc, ProfileState>(
+                builder: (context, profileState) {
+                  if (profileState is ProfileInitial) {
+                    context.read<ProfileBloc>().add(LoadProfile());
+                    return const Scaffold(
+                      backgroundColor: AppColors.background,
+                      body: Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        ),
+                      ),
+                    );
+                  }
+                  if (profileState is ProfileLoading) {
+                    return const Scaffold(
+                      backgroundColor: AppColors.background,
+                      body: Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        ),
+                      ),
+                    );
+                  }
+                  if (profileState is ProfileLoaded) {
+                    if (profileState.isOnboardingCompleted) {
+                      final userId = profileState.user['id'] as String? ?? 'user';
+                      return HomeShellScreen(key: ValueKey(userId));
+                    } else {
+                      return const OnboardingScreen();
+                    }
+                  }
+                  if (profileState is ProfileFailure) {
+                    // If it fails, let them complete onboarding or try loading again
+                    return Scaffold(
+                      backgroundColor: AppColors.background,
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(profileState.message, style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => context.read<ProfileBloc>().add(LoadProfile()),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return const OnboardingScreen();
+                },
+              ),
+            );
+          }
+          if (authState is Unauthenticated || authState is AuthFailure) {
+            return const LoginScreen();
+          }
+          // Splash / loading state
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ── Authenticated User Scope ──────────────────────────────────
-
-class AuthenticatedUserScope extends StatelessWidget {
-  const AuthenticatedUserScope({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<ProfileBloc, ProfileState>(
-      listener: (context, profileState) {
-        if (profileState is ProfileFailure &&
-            (profileState.message.contains("Authentication required") ||
-             profileState.message.contains("Unauthorized") ||
-             profileState.message.contains("token") ||
-             profileState.message.contains("Session expired"))) {
-          context.read<AuthBloc>().add(LogoutRequested());
-        }
-      },
-      child: BlocBuilder<ProfileBloc, ProfileState>(
-        builder: (context, profileState) {
-          if (profileState is ProfileInitial || profileState is ProfileLoading) {
-            return const Scaffold(
-              backgroundColor: AppColors.background,
-              body: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                ),
-              ),
-            );
-          }
-          if (profileState is ProfileLoaded) {
-            if (profileState.isOnboardingCompleted) {
-              final userId = profileState.user['id'] as String? ?? 'user';
-              return HomeShellScreen(key: ValueKey(userId));
-            } else {
-              return const OnboardingScreen();
-            }
-          }
-          if (profileState is ProfileFailure) {
-            // If it fails, let them complete onboarding or try loading again
-            return Scaffold(
-              backgroundColor: AppColors.background,
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(profileState.message, style: const TextStyle(color: Colors.red)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => context.read<ProfileBloc>().add(LoadProfile()),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return const OnboardingScreen();
+          );
         },
       ),
     );
