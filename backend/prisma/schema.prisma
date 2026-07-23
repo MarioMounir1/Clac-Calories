@@ -89,6 +89,7 @@ model User {
   gender           String?     // male | female
   activityLevel    String      @default("moderate") // sedentary | lightly_active | moderate | very_active
   goal             String      @default("maintain") // lose | maintain | gain
+  trainingExperience String    @default("new")      // new | consistent | experienced
 
   // Daily goals
   dailyCalorieGoal Int         @default(2000)
