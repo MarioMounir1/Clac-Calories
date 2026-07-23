@@ -16,6 +16,8 @@ interface WorkoutSessionInput {
   splitName: string;
   todayDayName: string;
   exercises: ExerciseInput[];
+  isOverridden?: boolean;
+  isSkipped?: boolean;
 }
 
 interface WeightTrendInput {
@@ -82,6 +84,20 @@ async function callOllamaChat(systemPrompt: string, userPrompt: string, fallback
 // ── 1. Workout Session Coach Note ────────────────────────────
 
 export async function generateWorkoutCoachNote(session: WorkoutSessionInput): Promise<string> {
+  if (session.isSkipped) {
+    const systemPrompt = `You are an encouraging strength coach. Produce 1 short sentence (maximum 25 words) acknowledging that the user marked today's workout as skipped. Be supportive and emphasize recovery and resuming next session. No markdown, no quotes.`;
+    const userPrompt = `User skipped today's ${session.todayDayName} session. Give a brief supportive note.`;
+    const fallback = `Marked as skipped — no problem, we'll pick right back up next session. Focus on rest and recovery today.`;
+    return callOllamaChat(systemPrompt, userPrompt, fallback);
+  }
+
+  if (session.isOverridden) {
+    const systemPrompt = `You are an expert strength coach. The user manually swapped today's session to ${session.todayDayName}. Produce 1-2 short sentences (maximum 30 words) acknowledging the swap and advising them to listen to their body and adjust recovery. No markdown, no quotes.`;
+    const userPrompt = `User swapped today's session to ${session.todayDayName} on routine ${session.splitName}. Give a short coach tip acknowledging the swap.`;
+    const fallback = `You swapped in ${session.todayDayName} today — make sure you are adequately recovered, and listen to your body throughout the session.`;
+    return callOllamaChat(systemPrompt, userPrompt, fallback);
+  }
+
   if (!session.exercises || session.exercises.length === 0) {
     return "Today is a dedicated rest day. Focus on hydration, mobility, and high-quality recovery.";
   }
@@ -94,6 +110,26 @@ export async function generateWorkoutCoachNote(session: WorkoutSessionInput): Pr
   const userPrompt = `Routine: ${session.splitName} - ${session.todayDayName}. Exercises today: ${exListStr}. Give a short 1-2 sentence coach tip.`;
 
   const fallback = `Focus on clean execution today. Prioritize your heavy compound lifts first before moving to accessory movements.`;
+  return callOllamaChat(systemPrompt, userPrompt, fallback);
+}
+
+// ── 2. Swap Suggestion Coach Note ────────────────────────────
+
+interface SwapSuggestionInput {
+  splitName: string;
+  completedDaysThisWeek: string[];
+  availableOptions: string[];
+}
+
+export async function generateSwapSuggestionNote(input: SwapSuggestionInput): Promise<string> {
+  const systemPrompt = `You are a smart strength coach offering a quick 1-sentence recommendation for a workout session swap. Produce exactly ONE short sentence (maximum 22 words). No markdown, no quotes.`;
+  const userPrompt = `Routine: ${input.splitName}. Sessions completed this week: ${input.completedDaysThisWeek.join(", ") || "none"}. Available swap options: ${input.availableOptions.join(", ")}. Recommend the single best option to swap today.`;
+
+  const recommendedOption = input.availableOptions[0] ?? "Legs";
+  const fallback = input.completedDaysThisWeek.length > 0
+    ? `Given your recent sessions this week, ${recommendedOption} is likely your best swap choice today.`
+    : `Selecting ${recommendedOption} keeps your training balanced and recovery on track today.`;
+
   return callOllamaChat(systemPrompt, userPrompt, fallback);
 }
 
