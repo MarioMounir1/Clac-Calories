@@ -278,7 +278,14 @@ export async function setupWorkoutRoutine(req: Request, res: Response): Promise<
   };
 
   try {
-    await prisma.user.update({ where: { id: userId }, data: {} }).catch(() => {});
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        workoutDays: daysPerWeek,
+        workoutSplitType: splitType,
+        workoutSplitName: splitName,
+      },
+    });
 
     console.log(`✅ [Workout] Routine setup by user ${userId}: ${splitName} (${daysPerWeek}d/${splitType})`);
 
@@ -311,7 +318,7 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
   try {
     const userId = req.user!.id;
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.age || !user.weightKg) {
+    if (!user || !user.age || !user.weightKg || !user.workoutSplitType || !user.workoutDays) {
       res.status(200).json({
         success: true,
         data: { routine: null, currentSession: null },
@@ -319,28 +326,9 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Map activityLevel to routine
-    let splitType = "upper_lower";
-    let splitName = "Upper / Lower Split";
-    let daysPerWeek = 4;
-
-    if (user.activityLevel === "sedentary") {
-      splitType = "full_body";
-      splitName = "Full Body Split";
-      daysPerWeek = 3;
-    } else if (user.activityLevel === "lightly_active") {
-      splitType = "ppl_1x";
-      splitName = "Push / Pull / Legs";
-      daysPerWeek = 3;
-    } else if (user.activityLevel === "moderate") {
-      splitType = "upper_lower";
-      splitName = "Upper / Lower Split";
-      daysPerWeek = 4;
-    } else if (user.activityLevel === "very_active") {
-      splitType = "ul_ppl";
-      splitName = "Hybrid PPL Split";
-      daysPerWeek = 5;
-    }
+    const splitType = user.workoutSplitType;
+    const splitName = user.workoutSplitName ?? user.workoutSplitType;
+    const daysPerWeek = user.workoutDays;
 
     const meta = ROUTINE_CATALOGUE[splitType];
     const currentSession = await buildCurrentSession(userId, splitType, splitName);
