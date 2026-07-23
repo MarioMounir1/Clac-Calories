@@ -1424,17 +1424,57 @@ class _QuestionnaireSheet extends StatefulWidget {
 }
 
 class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
-  int _step            = 0;
+  int _step = 0;
   int? _selectedFreq;
-  int? _selectedIdx;
+  String _selectedExp = 'new'; // 'new' | 'consistent' | 'experienced'
 
-  List<RoutineSuggestion> get _suggestions =>
-      _selectedFreq != null ? RoutineCatalogue.forDays(_selectedFreq!) : [];
+  bool _loadingRecommend = false;
+  Map<String, dynamic>? _recommendedData;
+
+  @override
+  void initState() {
+    super.initState();
+    final profileState = context.read<ProfileBloc>().state;
+    if (profileState is ProfileLoaded) {
+      final exp = profileState.user['trainingExperience'] as String?;
+      if (exp != null && exp.isNotEmpty) {
+        _selectedExp = exp;
+      }
+    }
+  }
+
+  Future<void> _fetchRecommendation() async {
+    if (_selectedFreq == null) return;
+    setState(() {
+      _step = 1;
+      _loadingRecommend = true;
+    });
+
+    // Save trainingExperience to profile
+    context.read<ProfileBloc>().add(UpdateProfileEvent(trainingExperience: _selectedExp));
+
+    try {
+      final dio = ApiClient().dio;
+      final resp = await dio.get('/workouts/recommend', queryParameters: {'days': _selectedFreq});
+      if (mounted) {
+        setState(() {
+          _recommendedData = resp.data['data'] as Map<String, dynamic>?;
+          _loadingRecommend = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingRecommend = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.82,
+      initialChildSize: 0.88,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (_, scrollCtrl) => Container(
@@ -1508,7 +1548,7 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
     );
   }
 
-  // ── Step 1: Frequency ──────────────────────────────────────
+  // ── Step 1: Frequency & Training Experience ────────────────
   Widget _buildStep1() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1517,25 +1557,23 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
             style: GoogleFonts.inter(
                 fontSize: 22, fontWeight: FontWeight.w900,
                 color: _C.textPri, letterSpacing: -0.4)),
-        const SizedBox(height: 6),
-        Text('Step 1 of 2',
+        const SizedBox(height: 4),
+        Text('Step 1 of 2 · Training Background',
             style: GoogleFonts.inter(fontSize: 12, color: _C.textMut)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+
+        // Section A: Days/Week
         Text('How many days per week do you train?',
             style: GoogleFonts.inter(
-                fontSize: 17, fontWeight: FontWeight.w700, color: _C.textPri)),
-        const SizedBox(height: 6),
-        Text('Choose what fits your current schedule',
-            style: GoogleFonts.inter(fontSize: 13, color: _C.textMut)),
-        const SizedBox(height: 24),
-
+                fontSize: 16, fontWeight: FontWeight.w700, color: _C.textPri)),
+        const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 2.2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 2.3,
           children: [3, 4, 5, 6].map((days) {
             final sel = _selectedFreq == days;
             return GestureDetector(
@@ -1543,37 +1581,97 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: sel ? _C.cyan.withOpacity(0.15) : _C.cardElev,
-                  borderRadius: BorderRadius.circular(16),
+                  color: sel ? _C.cyan.withValues(alpha: 0.15) : _C.cardElev,
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                       color: sel ? _C.cyan : _C.borderMid, width: sel ? 2 : 1.2),
-                  boxShadow: sel
-                      ? [BoxShadow(color: _C.cyan.withOpacity(0.2), blurRadius: 12)]
-                      : null,
                 ),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text('$days Days',
                       style: GoogleFonts.inter(
-                          fontSize: 17, fontWeight: FontWeight.w800,
+                          fontSize: 16, fontWeight: FontWeight.w800,
                           color: sel ? _C.cyan : _C.textPri)),
                   Text('per week',
                       style: GoogleFonts.inter(
                           fontSize: 11,
-                          color: sel ? _C.cyan.withOpacity(0.8) : _C.textMut)),
+                          color: sel ? _C.cyan.withValues(alpha: 0.8) : _C.textMut)),
                 ]),
               ),
             );
           }).toList(),
         ),
+        const SizedBox(height: 24),
+
+        // Section B: Training Experience
+        Text('How long have you been lifting?',
+            style: GoogleFonts.inter(
+                fontSize: 16, fontWeight: FontWeight.w700, color: _C.textPri)),
+        const SizedBox(height: 12),
+
+        ...[
+          {'val': 'new', 'title': 'New to lifting', 'desc': 'Under 6 months of consistent training'},
+          {'val': 'consistent', 'title': 'Consistent lifter', 'desc': '6 months to 2 years of lifting history'},
+          {'val': 'experienced', 'title': 'Experienced lifter', 'desc': '2+ years of structured strength training'},
+        ].map((item) {
+          final val = item['val']!;
+          final sel = _selectedExp == val;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              onTap: () => setState(() => _selectedExp = val),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: sel ? _C.cyan.withValues(alpha: 0.12) : _C.cardElev,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: sel ? _C.cyan : _C.borderMid,
+                    width: sel ? 1.8 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      sel ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      color: sel ? _C.cyan : _C.textMut,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['title']!,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: sel ? FontWeight.w800 : FontWeight.w600,
+                              color: sel ? _C.cyan : _C.textPri,
+                            ),
+                          ),
+                          Text(
+                            item['desc']!,
+                            style: GoogleFonts.inter(fontSize: 11, color: _C.textMut),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+
         const SizedBox(height: 28),
 
         SizedBox(
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: _selectedFreq != null
-                ? () => setState(() => _step = 1)
-                : null,
+            onPressed: _selectedFreq != null ? _fetchRecommendation : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _C.cyan,
               disabledBackgroundColor: _C.border,
@@ -1583,7 +1681,7 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('Next',
+              Text('Get Personalized Split',
                   style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800)),
               const SizedBox(width: 6),
               const Icon(Icons.arrow_forward_rounded, size: 18),
@@ -1595,10 +1693,46 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
     );
   }
 
-  // ── Step 2: Recommendation dialog-style ───────────────────
+  // ── Step 2: Intelligent Recommendation ─────────────────────
   Widget _buildStep2() {
-    final freq = _selectedFreq!;
-    final suggestions = _suggestions;
+    if (_loadingRecommend) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(color: _C.cyan),
+            const SizedBox(height: 20),
+            Text(
+              'Analyzing your profile & generating AI coach recommendation...',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 13, color: _C.textSec),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final data = _recommendedData;
+    final recommended = data?['recommended'] as Map<String, dynamic>?;
+    final otherOptions = (data?['otherOptions'] as List<dynamic>?) ?? [];
+
+    if (recommended == null) {
+      return Column(
+        children: [
+          Text('Failed to load recommendation', style: GoogleFonts.inter(color: Colors.red)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => setState(() => _step = 0),
+            child: const Text('Back'),
+          ),
+        ],
+      );
+    }
+
+    final recName = recommended['name'] as String? ?? 'Recommended Split';
+    final recTagline = recommended['tagline'] as String? ?? '';
+    final recBreakdown = (recommended['breakdown'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+    final recReasonNote = recommended['reasonNote'] as String? ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1613,137 +1747,227 @@ class _QuestionnaireSheetState extends State<_QuestionnaireSheet> {
               style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w900, color: _C.textPri)),
         ]),
-        const SizedBox(height: 6),
-        Text('Step 2 of 2',
+        const SizedBox(height: 4),
+        Text('Step 2 of 2 · AI Coach Recommendation',
             style: GoogleFonts.inter(fontSize: 12, color: _C.textMut)),
         const SizedBox(height: 20),
 
-        // Conversation-style recommendation card
+        // ── TOP RECOMMENDED CARD ────────────────────────────
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _C.cardElev,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _C.cyan.withOpacity(0.25), width: 1),
+            color: _C.cyan.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _C.cyan, width: 2),
+            boxShadow: [BoxShadow(color: _C.cyan.withValues(alpha: 0.2), blurRadius: 16)],
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 28, height: 28,
-                decoration: BoxDecoration(
-                    color: _C.cyan.withOpacity(0.15), shape: BoxShape.circle),
-                child: const Icon(Icons.psychology_rounded, color: _C.cyan, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Text('Offline Engine',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: _C.cyan)),
-            ]),
-            const SizedBox(height: 10),
-            Text(
-              'Based on your choice of $freq training days, '
-              'our secure offline engine recommends the following splits. '
-              'Which one fits your goals?',
-              style: GoogleFonts.inter(
-                  fontSize: 13, color: _C.textSec, height: 1.5),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 20),
-
-        // Routine option cards
-        ...List.generate(suggestions.length, (i) {
-          final s   = suggestions[i];
-          final sel = _selectedIdx == i;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedIdx = i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: sel ? _C.cyan.withOpacity(0.1) : _C.cardElev,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: sel ? _C.cyan : _C.border, width: sel ? 2 : 1.2),
-                  boxShadow: sel
-                      ? [BoxShadow(color: _C.cyan.withOpacity(0.15), blurRadius: 16)]
-                      : null,
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 20, height: 20,
-                      decoration: BoxDecoration(
-                        color: sel ? _C.cyan : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: sel ? _C.cyan : _C.borderMid, width: 2),
-                      ),
-                      child: sel
-                          ? const Icon(Icons.check, size: 12, color: Colors.black)
-                          : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _C.cyan,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(s.name,
-                          style: GoogleFonts.inter(
-                              fontSize: 15, fontWeight: FontWeight.w800,
-                              color: sel ? _C.cyan : _C.textPri)),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                  Text(s.tagline,
-                      style: GoogleFonts.inter(fontSize: 12, color: _C.textSec, height: 1.4)),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6, runSpacing: 6,
-                    children: s.breakdown.map((d) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: sel ? _C.cyan.withOpacity(0.12) : _C.card,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                            color: sel ? _C.cyan.withOpacity(0.3) : _C.border, width: 1),
+                    child: Text(
+                      'BEST FIT FOR YOU',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                        letterSpacing: 0.8,
                       ),
-                      child: Text(d,
-                          style: GoogleFonts.inter(
-                              fontSize: 10, fontWeight: FontWeight.w600,
-                              color: sel ? _C.cyan : _C.textSec)),
-                    )).toList(),
+                    ),
                   ),
-                ]),
+                  Row(
+                    children: [
+                      const Icon(Icons.memory_rounded, color: _C.cyan, size: 12),
+                      const SizedBox(width: 4),
+                      Text('AI Coach', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: _C.cyan)),
+                    ],
+                  ),
+                ],
               ),
-            ),
-          );
-        }),
+              const SizedBox(height: 12),
+              Text(
+                recName,
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: _C.textPri),
+              ),
+              const SizedBox(height: 4),
+              Text(recTagline, style: GoogleFonts.inter(fontSize: 12, color: _C.textSec)),
+              const SizedBox(height: 14),
 
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            onPressed: _selectedIdx != null
-                ? () => widget.onComplete(freq, suggestions[_selectedIdx!])
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _C.cyan,
-              disabledBackgroundColor: _C.border,
-              foregroundColor: Colors.black,
-              disabledForegroundColor: _C.textMut,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.check_circle_rounded, size: 18),
-              const SizedBox(width: 8),
-              Text('Configure Training Plan',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800)),
-            ]),
+              // Reasoning Box
+              if (recReasonNote.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _C.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _C.cyan.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.psychology_rounded, color: _C.cyan, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          recReasonNote,
+                          style: GoogleFonts.inter(fontSize: 12, color: _C.textPri, height: 1.4, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 14),
+
+              // Breakdown Pills
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: recBreakdown.map((d) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _C.cyan.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _C.cyan.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    d,
+                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: _C.cyan),
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // Configure Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final split = RoutineSuggestion(
+                      name: recName,
+                      splitType: recommended['splitType'] as String,
+                      tagline: recTagline,
+                      breakdown: recBreakdown,
+                    );
+                    widget.onComplete(_selectedFreq!, split);
+                  },
+                  icon: const Icon(Icons.check_circle_rounded, size: 18),
+                  label: Text('Configure This Plan', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _C.cyan,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+
+        const SizedBox(height: 24),
+
+        // ── OTHER OPTIONS ──────────────────────────────────
+        if (otherOptions.isNotEmpty) ...[
+          Text('Other Options for $_selectedFreq Days',
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: _C.textPri)),
+          const SizedBox(height: 12),
+
+          ...otherOptions.map((opt) {
+            final optMap = opt as Map<String, dynamic>;
+            final optName = optMap['name'] as String? ?? 'Split';
+            final optTagline = optMap['tagline'] as String? ?? '';
+            final optBreakdown = (optMap['breakdown'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+            final optReasonTag = optMap['reasonTag'] as String? ?? 'Alternative option';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _C.cardElev,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _C.border, width: 1.2),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            optName,
+                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: _C.textPri),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _C.amber.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: _C.amber.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            optReasonTag,
+                            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: _C.amber),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(optTagline, style: GoogleFonts.inter(fontSize: 12, color: _C.textSec)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: optBreakdown.map((d) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _C.card,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: _C.border),
+                        ),
+                        child: Text(d, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: _C.textSec)),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          final split = RoutineSuggestion(
+                            name: optName,
+                            splitType: optMap['splitType'] as String,
+                            tagline: optTagline,
+                            breakdown: optBreakdown,
+                          );
+                          widget.onComplete(_selectedFreq!, split);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _C.textPri,
+                          side: const BorderSide(color: _C.borderMid),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Select This Plan', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+
         const SizedBox(height: 24),
       ],
     );
