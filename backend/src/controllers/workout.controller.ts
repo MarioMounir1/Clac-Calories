@@ -10,7 +10,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import prisma from "../services/prisma.service";
 import { WorkoutService } from "../services/workout.service";
-import { generateWorkoutCoachNote, generateExerciseCoachNote, generateRoutineRecommendationNote, generateSwapSuggestionNote, generateWorkoutSummaryNote, generateOvertrainingNote, interpretSessionRequest, generateWeeklyRecapNote } from "../services/coach.service";
+import { generateWorkoutCoachNote, generateExerciseCoachNote, generateRoutineRecommendationNote, generateSwapSuggestionNote, generateWorkoutSummaryNote, generateOvertrainingNote, interpretSessionRequest, generateWeeklyRecapNote, generateIntentConfirmationNote } from "../services/coach.service";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -193,21 +193,19 @@ async function getLastWeekPerformance(userId: string, exerciseId: string): Promi
   return null;
 }
 
-// ── Build currentSession from configured date + routine ────
-async function buildCurrentSession(
+// ── Pure Data Fetch: fetchSessionData (0 Ollama calls) ────────
+async function fetchSessionData(
   userId: string,
   splitType: string,
   splitName: string,
   dateStr?: string,
-  configuredAt?: Date | null,
-  streakDays?: number
+  configuredAt?: Date | null
 ): Promise<CurrentSession> {
   const meta = ROUTINE_CATALOGUE[splitType];
   const days = meta?.days ?? [];
 
   const targetDateStr = dateStr ?? new Date().toISOString().split("T")[0];
 
-  // 1. Check for a date-specific override in SessionOverride table
   const override = await prisma.sessionOverride.findUnique({
     where: {
       userId_date: {
@@ -241,30 +239,20 @@ async function buildCurrentSession(
     todayDayName = days[todayIndex % days.length] ?? "Rest";
   }
 
-  // Handle explicit skipped state
   if (isSkipped) {
-    const sessionCoachNote = await generateWorkoutCoachNote({
-      splitName,
-      todayDayName: "Skipped",
-      exercises: [],
-      isSkipped: true,
-      isOverridden: true,
-      streakDays,
-    });
     return {
       routineName: splitName,
       todayDayName: "Skipped",
       exercises: [],
       isSkipped: true,
       isOverridden: true,
-      coachNote: sessionCoachNote,
+      coachNote: "Today is marked as skipped. Focus on rest and recovery.",
       topHistoricalSet: null,
     };
   }
 
   const baseExercises = DAY_EXERCISES[todayDayName] ?? [];
 
-  // Fetch real Exercise IDs from the DB
   const dbExercises = await prisma.exercise.findMany({
     where: { name: { in: baseExercises.map(e => e.name) } }
   });
@@ -292,29 +280,7 @@ async function buildCurrentSession(
     };
   }));
 
-  const exercisesWithCoachNotes = await Promise.all(
-    exercises.map(async (ex) => {
-      const coachNote = await generateExerciseCoachNote(ex);
-      return {
-        ...ex,
-        coachNote,
-      };
-    })
-  );
-
-  const highFatigueRisk = (streakDays ?? 0) >= 3 && todayDayName !== "Rest" && !isSkipped;
-
-  const sessionCoachNote = await generateWorkoutCoachNote({
-    splitName,
-    todayDayName,
-    exercises: exercisesWithCoachNotes,
-    isOverridden,
-    isSkipped: false,
-    streakDays,
-    highFatigueRisk,
-  });
-
-  const first = exercisesWithCoachNotes[0];
+  const first = exercises[0];
   const topHistoricalSet = (first && first.lastWeekWeight && first.lastWeekReps)
     ? {
         exerciseName: first.name,
@@ -327,12 +293,72 @@ async function buildCurrentSession(
   return {
     routineName: splitName,
     todayDayName,
-    exercises: exercisesWithCoachNotes,
+    exercises,
     isSkipped: false,
     isOverridden,
-    coachNote: sessionCoachNote,
+    coachNote: undefined,
     topHistoricalSet,
   };
+}
+
+// ── Attach Ollama Coach Notes (Only for full display rendering) ─
+async function attachSessionCoachNotes(
+  session: CurrentSession,
+  splitName: string,
+  streakDays?: number
+): Promise<CurrentSession> {
+  if (session.isSkipped) {
+    const note = await generateWorkoutCoachNote({
+      splitName,
+      todayDayName: "Skipped",
+      exercises: [],
+      isSkipped: true,
+      isOverridden: true,
+      streakDays,
+    });
+    return { ...session, coachNote: note };
+  }
+
+  const exercisesWithCoachNotes = await Promise.all(
+    session.exercises.map(async (ex) => {
+      const coachNote = await generateExerciseCoachNote(ex);
+      return {
+        ...ex,
+        coachNote,
+      };
+    })
+  );
+
+  const highFatigueRisk = (streakDays ?? 0) >= 3 && session.todayDayName !== "Rest" && !session.isSkipped;
+
+  const sessionCoachNote = await generateWorkoutCoachNote({
+    splitName,
+    todayDayName: session.todayDayName,
+    exercises: exercisesWithCoachNotes,
+    isOverridden: session.isOverridden,
+    isSkipped: false,
+    streakDays,
+    highFatigueRisk,
+  });
+
+  return {
+    ...session,
+    exercises: exercisesWithCoachNotes,
+    coachNote: sessionCoachNote,
+  };
+}
+
+// ── Build currentSession from configured date + routine ────
+async function buildCurrentSession(
+  userId: string,
+  splitType: string,
+  splitName: string,
+  dateStr?: string,
+  configuredAt?: Date | null,
+  streakDays?: number
+): Promise<CurrentSession> {
+  const data = await fetchSessionData(userId, splitType, splitName, dateStr, configuredAt);
+  return attachSessionCoachNotes(data, splitName, streakDays);
 }
 
 // ── POST /api/v1/workouts/setup ────────────────────────────
@@ -1104,7 +1130,7 @@ export async function interpretWorkoutSessionRequest(req: Request, res: Response
     const splitName = user.workoutSplitName ?? user.workoutSplitType;
     const targetDateStr = new Date().toISOString().split("T")[0];
 
-    const currentSession = await buildCurrentSession(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt);
+    const currentSession = await fetchSessionData(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt);
     const meta = ROUTINE_CATALOGUE[splitType];
     const availableDayTypes = meta?.days ?? [];
 
@@ -1115,8 +1141,9 @@ export async function interpretWorkoutSessionRequest(req: Request, res: Response
       exercises: currentSession.exercises,
     });
 
-    let confirmationMessage = interpretation.confirmationMessage;
     let actionExecuted = false;
+    let swappedFrom: string | undefined;
+    let swappedTo: string | undefined;
 
     if (interpretation.intent === "override_day" && interpretation.dayType) {
       const rawChosen = interpretation.dayType.trim();
@@ -1127,9 +1154,6 @@ export async function interpretWorkoutSessionRequest(req: Request, res: Response
         create: { userId, date: targetDateStr, dayType: chosenType },
       });
       actionExecuted = true;
-      if (!confirmationMessage) {
-        confirmationMessage = `Updated today's session to ${chosenType}.`;
-      }
     } else if (interpretation.intent === "swap_exercise") {
       const queryName = (interpretation.exerciseName ?? "").toLowerCase();
       const targetEx = currentSession.exercises.find(
@@ -1152,6 +1176,8 @@ export async function interpretWorkoutSessionRequest(req: Request, res: Response
         }
 
         if (alt) {
+          swappedFrom = targetEx.name;
+          swappedTo = alt.name;
           const activeSession = await prisma.workoutSession.findFirst({
             where: { userId, endedAt: null },
             include: { exercises: true },
@@ -1170,22 +1196,30 @@ export async function interpretWorkoutSessionRequest(req: Request, res: Response
           } else {
             actionExecuted = true;
           }
-          confirmationMessage = `Swapped ${targetEx.name} for ${alt.name}.`;
         }
       }
     } else if (interpretation.intent === "lighter_intensity") {
       actionExecuted = true;
-      confirmationMessage = "Understood — today's session will focus on controlled execution with lighter intensity.";
     }
 
-    const updatedSession = await buildCurrentSession(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt);
+    // Generate warm, casual coach confirmation line
+    const confirmationMessage = await generateIntentConfirmationNote({
+      intent: interpretation.intent,
+      dayType: interpretation.dayType,
+      exerciseSwappedFrom: swappedFrom,
+      exerciseSwappedTo: swappedTo,
+      userMessage: message.trim(),
+    });
+
+    // Fetch updated session data without triggering 10 exercise note calls
+    const updatedSession = await fetchSessionData(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt);
 
     res.status(200).json({
       success: true,
       data: {
         intent: interpretation.intent,
         actionExecuted,
-        confirmationMessage: confirmationMessage || "Session updated successfully.",
+        confirmationMessage,
         currentSession: updatedSession,
       },
     });
