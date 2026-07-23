@@ -78,6 +78,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   final TextEditingController _aiCommandController = TextEditingController();
   bool _isInterpretingAiCommand = false;
+  bool _showAllExercises = false;
 
   // ── Streak & Real-Time Weekly Completion ──────────────────────
   int _streakDays = 0;
