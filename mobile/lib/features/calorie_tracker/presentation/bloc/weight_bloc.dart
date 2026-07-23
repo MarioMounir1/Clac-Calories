@@ -30,6 +30,7 @@ class WeightBloc extends Bloc<WeightEvent, WeightState> {
           currentWeight: (data['currentWeight'] as num?)?.toDouble() ?? 70.0,
           goal: data['goal'] as String? ?? 'maintain',
           stats: data['stats'] as Map<String, dynamic>?,
+          coachNote: data['coachNote'] as String? ?? data['stats']?['coachNote'] as String?,
           activeDaysFilter: event.days,
         ));
       },
@@ -59,6 +60,7 @@ class WeightBloc extends Bloc<WeightEvent, WeightState> {
             currentWeight: (freshData['currentWeight'] as num?)?.toDouble() ?? event.weightKg,
             goal: freshData['goal'] as String? ?? 'maintain',
             stats: freshData['stats'] as Map<String, dynamic>?,
+            coachNote: freshData['coachNote'] as String? ?? freshData['stats']?['coachNote'] as String?,
             activeDaysFilter: filterDays,
           )),
         );
@@ -88,6 +90,7 @@ class WeightBloc extends Bloc<WeightEvent, WeightState> {
             currentWeight: (freshData['currentWeight'] as num?)?.toDouble() ?? 70.0,
             goal: freshData['goal'] as String? ?? 'maintain',
             stats: freshData['stats'] as Map<String, dynamic>?,
+            coachNote: freshData['coachNote'] as String? ?? freshData['stats']?['coachNote'] as String?,
             activeDaysFilter: filterDays,
           )),
         );

@@ -19,6 +19,7 @@ class WeightLoaded extends WeightState {
   final double currentWeight;
   final String goal;
   final Map<String, dynamic>? stats;
+  final String? coachNote;
   final int activeDaysFilter;
 
   const WeightLoaded({
@@ -26,11 +27,12 @@ class WeightLoaded extends WeightState {
     required this.currentWeight,
     required this.goal,
     this.stats,
+    this.coachNote,
     required this.activeDaysFilter,
   });
 
   @override
-  List<Object?> get props => [logs, currentWeight, goal, stats, activeDaysFilter];
+  List<Object?> get props => [logs, currentWeight, goal, stats, coachNote, activeDaysFilter];
 }
 
 class WeightLogSuccess extends WeightState {
