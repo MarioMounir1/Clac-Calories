@@ -2,6 +2,7 @@
 // The Teneen — Dashboard BLoC
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import '../../domain/entities/meal_log_entity.dart';
 import '../../domain/repositories/meal_repository.dart';
 import '../../domain/repositories/tracker_repository.dart';
@@ -11,22 +12,34 @@ import 'dashboard_state.dart';
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final TrackerRepository repository;
   final MealRepository? mealRepository;
+  bool _isFetchInFlight = false;
 
   DashboardBloc({
     required this.repository,
     this.mealRepository,
   }) : super(DashboardInitial()) {
-    on<LoadDashboard>(_onLoadDashboard);
+    on<LoadDashboard>(_onLoadDashboard, transformer: restartable());
     on<RefreshDashboard>(_onRefreshDashboard);
-    on<ResetDashboardEvent>((event, emit) => emit(DashboardInitial()));
+    on<ResetDashboardEvent>((event, emit) {
+      _isFetchInFlight = false;
+      emit(DashboardInitial());
+    });
   }
 
   Future<void> _onLoadDashboard(
     LoadDashboard event,
     Emitter<DashboardState> emit,
   ) async {
+    if (_isFetchInFlight) {
+      print('⚠️ WARNING [DashboardBloc]: LoadDashboard dispatched while another LoadDashboard is already in flight! Cancelling previous request via restartable().');
+    }
+    _isFetchInFlight = true;
     emit(DashboardLoading());
-    await _fetchData(event.date, emit);
+    try {
+      await _fetchData(event.date, emit);
+    } finally {
+      _isFetchInFlight = false;
+    }
   }
 
   Future<void> _onRefreshDashboard(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../premium/data/services/purchase_service.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -9,14 +10,18 @@ import 'profile_state.dart';
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final ProfileRepository repository;
   StreamSubscription? _premiumSubscription;
+  bool _isProfileInFlight = false;
 
   ProfileBloc({required this.repository}) : super(ProfileInitial()) {
-    on<LoadProfile>(_onLoadProfile);
+    on<LoadProfile>(_onLoadProfile, transformer: restartable());
     on<UpdateProfileEvent>(_onUpdateProfile);
     on<CheckOnboardingStatus>(_onCheckOnboardingStatus);
     on<CompleteOnboardingEvent>(_onCompleteOnboarding);
     on<UpdatePremiumStatus>(_onUpdatePremiumStatus);
-    on<ResetProfileEvent>((event, emit) => emit(ProfileInitial()));
+    on<ResetProfileEvent>((event, emit) {
+      _isProfileInFlight = false;
+      emit(ProfileInitial());
+    });
 
     _premiumSubscription = PurchaseService.instance.premiumStream.listen((isPremium) {
       add(UpdatePremiumStatus(isPremium));
@@ -27,11 +32,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     LoadProfile event,
     Emitter<ProfileState> emit,
   ) async {
+    if (_isProfileInFlight) {
+      print('⚠️ WARNING [ProfileBloc]: LoadProfile dispatched while another LoadProfile is already in flight! Cancelling previous request via restartable().');
+    }
+    _isProfileInFlight = true;
     emit(ProfileLoading());
-    final results = await Future.wait([
-      repository.fetchUserProfile(),
-      repository.isOnboardingCompleted(),
-    ]);
+    try {
+      final results = await Future.wait([
+        repository.fetchUserProfile(),
+        repository.isOnboardingCompleted(),
+      ]);
 
     final profileResult = results[0] as dynamic;
     final isOnboardingCompleted = results[1] as bool;
@@ -80,6 +90,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         ));
       },
     );
+    } finally {
+      _isProfileInFlight = false;
+    }
   }
 
   Future<void> _onUpdateProfile(
