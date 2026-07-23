@@ -91,6 +91,11 @@ model User {
   goal             String      @default("maintain") // lose | maintain | gain
   trainingExperience String    @default("new")      // new | consistent | experienced
 
+  // Workout Routine Configuration
+  workoutDays        Int?
+  workoutSplitType   String?
+  workoutSplitName   String?
+
   // Daily goals
   dailyCalorieGoal Int         @default(2000)
   proteinGoal      Int         @default(150)
