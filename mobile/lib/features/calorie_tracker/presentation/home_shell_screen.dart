@@ -57,7 +57,7 @@ class DashboardTabWrapper extends StatelessWidget {
           if (state is DashboardLoaded) {
             return MealsDashboard(
               foodSummary: state.foodSummary,
-              mealLogs: null,
+              mealLogs: state.todayMealLogs,
             );
           }
           if (state is DashboardFailure) {
