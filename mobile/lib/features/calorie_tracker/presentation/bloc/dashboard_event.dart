@@ -25,3 +25,7 @@ class RefreshDashboard extends DashboardEvent {
   @override
   List<Object?> get props => [date];
 }
+
+class ResetDashboardEvent extends DashboardEvent {
+  const ResetDashboardEvent();
+}
