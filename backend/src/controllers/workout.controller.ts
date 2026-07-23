@@ -149,7 +149,8 @@ async function buildCurrentSession(
   splitType: string,
   splitName: string,
   dateStr?: string,
-  configuredAt?: Date | null
+  configuredAt?: Date | null,
+  streakDays?: number
 ): Promise<CurrentSession> {
   const meta = ROUTINE_CATALOGUE[splitType];
   const days = meta?.days ?? [];
@@ -198,6 +199,7 @@ async function buildCurrentSession(
       exercises: [],
       isSkipped: true,
       isOverridden: true,
+      streakDays,
     });
     return {
       routineName: splitName,
@@ -253,6 +255,7 @@ async function buildCurrentSession(
     exercises: exercisesWithCoachNotes,
     isOverridden,
     isSkipped: false,
+    streakDays,
   });
 
   const first = exercisesWithCoachNotes[0];
@@ -313,24 +316,6 @@ export async function setupWorkoutRoutine(req: Request, res: Response): Promise<
     res.status(200).json({
       success: true,
       data: {
-        routine: {
-          splitType,
-          splitName,
-          daysPerWeek,
-          description: meta.description,
-          weekSchedule: meta.days,
-          configuredAt: configuredAt.toISOString(),
-        },
-        currentSession,
-      },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("❌ [Workout] setup error:", msg);
-    res.status(500).json({ success: false, error: "Failed to save routine configuration." });
-  }
-}
-
 // ── GET /api/v1/workouts/routine ───────────────────────────
 
 export async function getWorkoutRoutine(req: Request, res: Response): Promise<void> {
@@ -349,11 +334,40 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
     const splitType = user.workoutSplitType;
     const splitName = user.workoutSplitName ?? user.workoutSplitType;
     const daysPerWeek = user.workoutDays;
-
     const meta = ROUTINE_CATALOGUE[splitType];
-    const currentSession = await buildCurrentSession(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt);
 
-    // Compute real workout streak & weekly completion from DB
+    // Compute workout streak
+    let streakDays = 0;
+    const allSessions = await prisma.workoutSession.findMany({
+      where: { userId },
+      select: { startedAt: true },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    if (allSessions.length > 0) {
+      const sessionDates = new Set(
+        allSessions.map((s) => new Date(s.startedAt).toISOString().split('T')[0])
+      );
+      
+      let checkDate = new Date();
+      checkDate.setHours(0, 0, 0, 0);
+      let checkStr = checkDate.toISOString().split('T')[0];
+
+      if (!sessionDates.has(checkStr)) {
+        checkDate.setDate(checkDate.getDate() - 1);
+        checkStr = checkDate.toISOString().split('T')[0];
+      }
+
+      while (sessionDates.has(checkStr)) {
+        streakDays++;
+        checkDate.setDate(checkDate.getDate() - 1);
+        checkStr = checkDate.toISOString().split('T')[0];
+      }
+    }
+
+    const currentSession = await buildCurrentSession(userId, splitType, splitName, targetDateStr, user.workoutConfiguredAt, streakDays);
+
+    // Compute real weekly completion from DB
     const now = new Date(targetDateStr + "T12:00:00Z");
     const startOfWeek = new Date(now);
     const dayOfWeek = (now.getDay() + 6) % 7; // Mon = 0, Sun = 6
@@ -456,34 +470,6 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
       };
     });
 
-    let streakDays = 0;
-    const allSessions = await prisma.workoutSession.findMany({
-      where: { userId },
-      select: { startedAt: true },
-      orderBy: { startedAt: 'desc' },
-    });
-
-    if (allSessions.length > 0) {
-      const sessionDates = new Set(
-        allSessions.map((s) => new Date(s.startedAt).toISOString().split('T')[0])
-      );
-      
-      let checkDate = new Date();
-      checkDate.setHours(0, 0, 0, 0);
-      let checkStr = checkDate.toISOString().split('T')[0];
-
-      if (!sessionDates.has(checkStr)) {
-        checkDate.setDate(checkDate.getDate() - 1);
-        checkStr = checkDate.toISOString().split('T')[0];
-      }
-
-      while (sessionDates.has(checkStr)) {
-        streakDays++;
-        checkDate.setDate(checkDate.getDate() - 1);
-        checkStr = checkDate.toISOString().split('T')[0];
-      }
-    }
-
     const uniqueTypes = Array.from(new Set(daysArr)).filter(t => t !== "Rest");
     const completedSessionNames = Array.from(completedDateStrs);
     const swapSuggestionNote = await generateSwapSuggestionNote({
@@ -502,7 +488,7 @@ export async function getWorkoutRoutine(req: Request, res: Response): Promise<vo
           description: meta.description,
           weekSchedule: meta.days,
           weekScheduleDetails,
-          configuredAt: user.updatedAt.toISOString(),
+          configuredAt: (user.workoutConfiguredAt ?? user.updatedAt).toISOString(),
         },
         currentSession,
         streakDays,
@@ -585,9 +571,84 @@ export async function logSet(req: Request, res: Response): Promise<void> {
 // ── POST /api/v1/workouts/session/:id/finish ────────────────────────────
 export async function finishSession(req: Request, res: Response): Promise<void> {
   try {
-    const session = await WorkoutService.finishSession(req.params.id, req.body.notes);
-    res.status(200).json({ success: true, data: session });
+    const sessionId = req.params.id;
+    const session = await WorkoutService.finishSession(sessionId, req.body.notes);
+
+    // Fetch full session details with completed exercises and sets
+    const fullSession = await prisma.workoutSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        exercises: {
+          include: {
+            exercise: true,
+            sets: true,
+          },
+        },
+      },
+    });
+
+    let prsAchieved: string[] = [];
+    let exercisesLogged = 0;
+    let totalSetsCompleted = 0;
+
+    if (fullSession) {
+      for (const we of fullSession.exercises) {
+        const completedSets = we.sets.filter((s) => s.isCompleted && s.weightKg != null && s.reps != null);
+        if (completedSets.length > 0) {
+          exercisesLogged++;
+          totalSetsCompleted += completedSets.length;
+
+          // Find top set in this session
+          completedSets.sort((a, b) => (b.weightKg! * b.reps!) - (a.weightKg! * a.reps!));
+          const sessionTopSet = completedSets[0];
+
+          // Check historical best set before this session
+          const previousBest = await prisma.exerciseSet.findFirst({
+            where: {
+              isCompleted: true,
+              weightKg: { not: null },
+              reps: { not: null },
+              workoutExercise: {
+                exerciseId: we.exerciseId,
+                sessionId: { not: sessionId },
+                session: { userId: fullSession.userId },
+              },
+            },
+            orderBy: [{ weightKg: "desc" }, { reps: "desc" }],
+          });
+
+          if (previousBest && previousBest.weightKg != null && previousBest.reps != null) {
+            if (
+              sessionTopSet.weightKg! > previousBest.weightKg ||
+              (sessionTopSet.weightKg! === previousBest.weightKg && sessionTopSet.reps! > previousBest.reps)
+            ) {
+              prsAchieved.push(`${we.exercise.name}: ${sessionTopSet.weightKg}kg × ${sessionTopSet.reps} reps`);
+            }
+          } else if (sessionTopSet.weightKg! > 0) {
+            // First time logging this exercise
+            prsAchieved.push(`${we.exercise.name}: ${sessionTopSet.weightKg}kg × ${sessionTopSet.reps} reps`);
+          }
+        }
+      }
+    }
+
+    const summaryNote = await generateWorkoutSummaryNote({
+      sessionName: session.name || "Workout",
+      exercisesLogged,
+      totalSetsCompleted,
+      prsAchieved,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...session,
+        summaryNote,
+        prsAchieved,
+      },
+    });
   } catch (err) {
+    console.error("❌ [Workout] finishSession error:", err);
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 }
