@@ -46,6 +46,7 @@ class SessionExercise {
   final String muscleGroup;
   final double? lastWeekWeight;
   final int? lastWeekReps;
+  final String? coachNote;
 
   const SessionExercise({
     this.id,
@@ -55,6 +56,7 @@ class SessionExercise {
     required this.muscleGroup,
     this.lastWeekWeight,
     this.lastWeekReps,
+    this.coachNote,
   });
 
   factory SessionExercise.fromJson(Map<String, dynamic> j) => SessionExercise(
@@ -65,6 +67,7 @@ class SessionExercise {
         muscleGroup:    j['muscleGroup'] as String? ?? '',
         lastWeekWeight: (j['lastWeekWeight'] as num?)?.toDouble(),
         lastWeekReps:   (j['lastWeekReps'] as num?)?.toInt(),
+        coachNote:      j['coachNote'] as String?,
       );
 }
 
@@ -104,12 +107,14 @@ class CurrentSession {
   final String routineName;
   final String todayDayName;
   final List<SessionExercise> exercises;
+  final String? coachNote;
   final TopHistoricalSet? topHistoricalSet;
 
   const CurrentSession({
     required this.routineName,
     required this.todayDayName,
     required this.exercises,
+    this.coachNote,
     this.topHistoricalSet,
   });
 
@@ -121,6 +126,7 @@ class CurrentSession {
         exercises:       (j['exercises'] as List<dynamic>? ?? [])
             .map((e) => SessionExercise.fromJson(e as Map<String, dynamic>))
             .toList(),
+        coachNote:        j['coachNote'] as String?,
         topHistoricalSet: j['topHistoricalSet'] != null
             ? TopHistoricalSet.fromJson(j['topHistoricalSet'] as Map<String, dynamic>)
             : null,
