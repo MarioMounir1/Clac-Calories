@@ -69,6 +69,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
   RoutineSuggestion? _activeRoutine;
   CurrentSession? _currentSession;
   String? _errorMessage;
+  int? _expandedExerciseIndex;
 
 
   // ── Streak & Real-Time Weekly Completion ──────────────────────
