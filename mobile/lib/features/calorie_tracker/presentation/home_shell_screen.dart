@@ -80,6 +80,7 @@ class HomeShellScreen extends StatefulWidget {
 
 class _HomeShellScreenState extends State<HomeShellScreen> {
   int _currentIndex = 0;
+  final Set<int> _visitedTabs = {0};
 
   final List<Widget> _screens = [
     const DashboardTabWrapper(),
@@ -97,7 +98,10 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
         children: [
           IndexedStack(
             index: _currentIndex,
-            children: _screens,
+            children: List.generate(
+              _screens.length,
+              (i) => _visitedTabs.contains(i) ? _screens[i] : const SizedBox.shrink(),
+            ),
           ),
           Positioned(
             bottom: 0,
@@ -145,7 +149,12 @@ class _HomeShellScreenState extends State<HomeShellScreen> {
     final color = isSelected ? AppColors.primary : AppColors.textSecondary.withValues(alpha: 0.6);
 
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+          _visitedTabs.add(index);
+        });
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 60,
